@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import requests
+import io
 
 # --- Configuração da Página ---
 # A configuração da página deve ser o primeiro comando do Streamlit
@@ -14,62 +16,61 @@ st.set_page_config(
 # @st.cache_data garante que o pré-processamento pesado só rode uma vez.
 @st.cache_data
 def carregar_dados():
-    # Caminho para o arquivo Excel
     path = 'https://raw.githubusercontent.com/MuriloBarros304/censo-graduacao-br/main/data/raw/tabelas_de_divulgacao_censo_da_educacao_superior_2023.xls'
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
     
-    # Carrega os dados de ingressantes
-    df_ingressantes = pd.read_excel(path, sheet_name="Tab3.04", header=None)
-    df_ingressantes = df_ingressantes.iloc[7:]
-    df_ingressantes = df_ingressantes.drop(71)
-    df_ingressantes.columns = [
-        'Ano', 'Grau', 'Total geral', 'Total geral publica', 'Total geral federal',
-        'Total geral estadual', 'Total geral municipal', 'Total geral privada',
-        'Total geral com fins', 'Total geral sem fins', 'Total presencial', 'Total presencial publica',
-        'Total presencial federal', 'Total presencial estadual', 'Total presencial municipal',
-        'Total presencial privada', 'Total presencial com fins', 'Total presencial sem fins',
-        'Total geral remota', 'Total remota publica', 'Total remota federal',
-        'Total remota estadual', 'Total remota municipal', 'Total remota privada',
-        'Total remota com fins', 'Total remota sem fins'
-    ]
-    df_ingressantes = df_ingressantes.dropna(how='all').reset_index(drop=True)
-    df_ingressantes['Ano'] = df_ingressantes['Ano'].ffill()
-    df_ingressantes = df_ingressantes.fillna(0).replace({'.': 0, '-': 0})
-    
-    # Carrega os dados de concluintes
-    df_concluintes = pd.read_excel(path, sheet_name="Tab3.05", header=None)
-    df_concluintes = df_concluintes.iloc[8:]
-    df_concluintes = df_concluintes.drop(61)
-    df_concluintes.columns = [
-        'Ano', 'Grau', 'Total geral', 'Total geral publica',
-        'Total geral federal', 'Total geral estadual', 'Total geral municipal',
-        'Total geral privada', 'Total geral com fins', 'Total geral sem fins',
-        'Total presencial', 'Total presencial publica', 'Total presencial federal',
-        'Total presencial estadual', 'Total presencial municipal',
-        'Total presencial privada', 'Total presencial com fins',
-        'Total presencial sem fins', 'Total geral remota',
-        'Total remota publica', 'Total remota federal',
-        'Total remota estadual', 'Total remota municipal','Total remota privada',
-        'Total remota com fins', 'Total remota sem fins'
-    ]
-    df_concluintes = df_concluintes.dropna(how='all').reset_index(drop=True)
-    df_concluintes['Ano'] = df_concluintes['Ano'].ffill()
-    df_concluintes = df_concluintes.fillna(0).replace({'.': 0, '-': 0})
-    
-    # Conversão de tipos para ambos os dataframes
-    cols_to_convert = list(df_ingressantes.columns)
-    cols_to_convert.remove('Grau')
-    for col in cols_to_convert:
-        df_ingressantes[col] = pd.to_numeric(df_ingressantes[col], errors='coerce').fillna(0).astype(int)
-        df_concluintes[col] = pd.to_numeric(df_concluintes[col], errors='coerce').fillna(0).astype(int)
+    try:
+        response = requests.get(path, headers=headers, timeout=30)
+        response.raise_for_status()
+        file_content = io.BytesIO(response.content)
         
-    return df_ingressantes, df_concluintes
+        df_ingressantes = pd.read_excel(file_content, sheet_name="Tab3.04", header=None)
+        file_content.seek(0)
+        df_concluintes = pd.read_excel(file_content, sheet_name="Tab3.05", header=None)
+        
+        df_ingressantes = df_ingressantes.iloc[7:].drop(71)
+        df_ingressantes.columns = [
+            'Ano', 'Grau', 'Total geral', 'Total geral publica', 'Total geral federal', 'Total geral estadual', 'Total geral municipal', 'Total geral privada',
+            'Total geral com fins', 'Total geral sem fins', 'Total presencial', 'Total presencial publica', 'Total presencial federal', 'Total presencial estadual',
+            'Total presencial municipal', 'Total presencial privada', 'Total presencial com fins', 'Total presencial sem fins', 'Total geral remota',
+            'Total remota publica', 'Total remota  federal', 'Total remota estadual', 'Total remota municipal', 'Total remota privada', 'Total remota com fins', 'Total remota sem fins'
+        ]
+        df_ingressantes = df_ingressantes.dropna(how='all').reset_index(drop=True)
+        df_ingressantes['Ano'] = df_ingressantes['Ano'].ffill()
+        df_ingressantes = df_ingressantes.fillna(0).replace({'.': 0, '-': 0})
+
+        df_concluintes = df_concluintes.iloc[8:].drop(61)
+        df_concluintes.columns = [
+            'Ano', 'Grau', 'Total geral', 'Total geral publica', 'Total geral federal',  'Total geral estadual', 'Total geral municipal', 'Total geral privada',
+            'Total geral com fins', 'Total geral sem fins', 'Total presencial', 'Total presencial publica', 'Total presencial federal', 'Total presencial estadual',
+            'Total presencial municipal', 'Total presencial privada', 'Total presencial com fins', 'Total presencial sem fins', 'Total geral remota', 'Total remota publica',
+            'Total remota  federal', 'Total remota estadual', 'Total remota municipal','Total remota privada', 'Total remota com fins', 'Total remota sem fins'
+        ]
+        df_concluintes = df_concluintes.dropna(how='all').reset_index(drop=True)
+        df_concluintes['Ano'] = df_concluintes['Ano'].ffill()
+        df_concluintes = df_concluintes.fillna(0).replace({'.': 0, '-': 0})
+        
+        cols_to_convert = list(df_ingressantes.columns)
+        cols_to_convert.remove('Grau')
+        for col in cols_to_convert:
+            df_ingressantes[col] = pd.to_numeric(df_ingressantes[col], errors='coerce').fillna(0).astype(int)
+            df_concluintes[col] = pd.to_numeric(df_concluintes[col], errors='coerce').fillna(0).astype(int)
+            
+        return df_ingressantes, df_concluintes
+    
+    except requests.exceptions.RequestException as e:
+        st.error(f"Falha de rede ao carregar os dados. Verifique sua conexão. Erro: {e}")
+        return None, None
 
 # Carrega os dados usando a função cacheada
 df_ingressantes, df_concluintes = carregar_dados()
 
+if df_ingressantes is None or df_concluintes is None:
+    st.stop()  # Interrompe a execução se os dados não puderem ser carregados
+
 # --- Barra Lateral (Sidebar) com Filtros ---
 st.sidebar.image("images/logo.png", width=250)
-st.sidebar.title("Filtros Interativos")
+st.sidebar.title("Filtros")
 st.sidebar.markdown("Use os filtros abaixo para explorar os dados:")
 
 # Filtro para selecionar Ingressantes ou Concluintes
@@ -93,7 +94,7 @@ ano_selecionado = st.sidebar.slider(
 )
 
 # Filtro de grau acadêmico (excluindo 'Total' para evitar duplicidade nas somas)
-graus_disponiveis = df_ativo[df_ativo['Grau'] != 'Total']['Grau'].unique()
+graus_disponiveis = df_ativo[(df_ativo['Grau'] != 'Total') & (df_ativo['Grau'] != 'Não aplicável')]['Grau'].unique()
 grau_selecionado = st.sidebar.multiselect(
     "Selecione o Grau Acadêmico:",
     options=graus_disponiveis,
@@ -113,13 +114,15 @@ st.markdown(f"### Análise de **{tipo_analise}** para o ano de **{ano_selecionad
 # --- KPIs (Métricas Principais) ---
 st.markdown("---")
 st.subheader("Visão Geral do Ano Selecionado")
-
-# Soma os valores do dataframe filtrado
 total_geral = df_filtrado['Total geral'].sum()
 total_publica = df_filtrado['Total geral publica'].sum()
 total_privada = df_filtrado['Total geral privada'].sum()
 total_presencial = df_filtrado['Total presencial'].sum()
 total_remota = df_filtrado['Total geral remota'].sum()
+total_remota_publica = df_filtrado['Total remota publica'].sum()
+total_remota_privada = df_filtrado['Total remota privada'].sum()
+total_presencial_publica = df_filtrado['Total presencial publica'].sum()
+total_presencial_privada = df_filtrado['Total presencial privada'].sum()
 
 # Layout em colunas para os KPIs
 col1, col2, col3 = st.columns(3)
@@ -127,116 +130,120 @@ col1.metric(f"Total de {tipo_analise}", f"{total_geral:,}".replace(",", "."))
 col2.metric("Total em Instituições Públicas", f"{total_publica:,}".replace(",", "."))
 col3.metric("Total em Instituições Privadas", f"{total_privada:,}".replace(",", "."))
 
-col4, col5 = st.columns(2)
-col4.metric("Total na Modalidade Presencial", f"{total_presencial:,}".replace(",", "."))
-col5.metric("Total na Modalidade Remota (EAD)", f"{total_remota:,}".replace(",", "."))
-
-
 # --- Gráficos da Visão Geral ---
+ # --- SEÇÃO DE ANÁLISES COM ABAS ---
 st.markdown("---")
-st.subheader("Evolução Histórica e Distribuições")
+st.subheader("Análises Gráficas")
 
-# Gráfico de Evolução Histórica (Ingressantes vs. Concluintes)
-df_ingressantes_totais = df_ingressantes[df_ingressantes['Grau'] == 'Total'].set_index('Ano')['Total geral'].rename('Ingressantes')
-df_concluintes_totais = df_concluintes[df_concluintes['Grau'] == 'Total'].set_index('Ano')['Total geral'].rename('Concluintes')
-df_evolucao = pd.concat([df_ingressantes_totais, df_concluintes_totais], axis=1)
+mapa_de_cores = {'Pública': '#004A99', 'Privada': '#FFAA00', 'Presencial': '#28a745', 'Remota (EAD)': "#ea580f"}
 
-fig_evolucao = px.line(
-    df_evolucao,
-    x=df_evolucao.index,
-    y=['Ingressantes', 'Concluintes'],
-    title="Evolução Anual: Ingressantes vs. Concluintes (Total)",
-    labels={'value': 'Número de Alunos', 'Ano': 'Ano'},
-    markers=True
-)
-st.plotly_chart(fig_evolucao, use_container_width=True)
+tab1, tab2, tab3 = st.tabs(["Distribuições Gerais", "Análise Detalhada", "Dados Brutos"])
 
-
-# Gráficos de Pizza para o ano selecionado
-c1, c2 = st.columns(2)
-with c1:
-    fig_dist_adm = px.pie(
-        names=['Pública', 'Privada'],
-        values=[total_publica, total_privada],
-        title=f"Distribuição por Categoria Administrativa ({ano_selecionado})",
-        hole=0.3
-    )
-    st.plotly_chart(fig_dist_adm, use_container_width=True)
-
-with c2:
-    fig_dist_mod = px.pie(
-        names=['Presencial', 'Remota (EAD)'],
-        values=[total_presencial, total_remota],
-        title=f"Distribuição por Modalidade de Ensino ({ano_selecionado})",
-        hole=0.3
-    )
-    st.plotly_chart(fig_dist_mod, use_container_width=True)
-
-# --- Análises Detalhadas em Abas ---
-st.markdown("---")
-st.subheader("Análises Detalhadas")
-
-tab1, tab2, tab3 = st.tabs(["Por Grau Acadêmico", "Por Categoria Administrativa", "Dados Brutos"])
-
-with tab1:
-    st.markdown(f"#### Análise por Grau Acadêmico para o ano de **{ano_selecionado}**")
+with tab1: # Supondo que você renomeou a tab1 para tab_geral
+    st.markdown(f"##### Distribuição Geral de {tipo_analise} ({ano_selecionado})")
+    c1, c2 = st.columns(2)
+    with c1:
+        df_adm = pd.DataFrame({
+            'Categoria': ['Pública', 'Privada'],
+            'Total': [total_publica, total_privada]
+        })
+        fig_dist_adm = px.bar(
+            df_adm,
+            x='Categoria',  # Eixo X com as categorias
+            y='Total',      # Eixo Y com os valores numéricos
+            title="Geral Por Categoria Administrativa",
+            color='Categoria',  # Colorir as barras pela categoria (funciona igual)
+            color_discrete_map=mapa_de_cores,
+            text_auto=True      # Adiciona o valor em cima de cada barra, ótimo para visualização!
+        )
+        st.plotly_chart(fig_dist_adm, use_container_width=True)
     
-    # Gráfico de Barras por Grau
-    df_grau_sum = df_filtrado.groupby('Grau')['Total geral'].sum().sort_values(ascending=False)
-    fig_grau = px.bar(
-        df_grau_sum,
-        x=df_grau_sum.index,
-        y='Total geral',
-        title=f"Número de {tipo_analise} por Grau Acadêmico",
-        labels={'Total geral': f'Total de {tipo_analise}', 'Grau': 'Grau Acadêmico'},
-        text_auto=True
-    )
-    st.plotly_chart(fig_grau, use_container_width=True)
+    with c2:
+        # O DataFrame continua o mesmo
+        df_mod = pd.DataFrame({
+            'Modalidade': ['Presencial', 'Remota (EAD)'],
+            'Total': [total_presencial, total_remota]
+        })
+        fig_dist_mod = px.bar(
+            df_mod,
+            x='Modalidade', # Eixo X
+            y='Total',      # Eixo Y
+            title="Geral Por Modalidade de Ensino",
+            color='Modalidade', # Colorir as barras pela modalidade
+            color_discrete_map=mapa_de_cores,
+            text_auto=True      # Adiciona os valores nas barras
+        )
+        st.plotly_chart(fig_dist_mod, use_container_width=True)
 
 with tab2:
-    st.markdown(f"#### Detalhamento por Categoria Administrativa ({ano_selecionado})")
-    
-    # Preparando dados para o gráfico de barras empilhadas
-    data_detalhe = {
-        'Categoria': ['Pública Federal', 'Pública Estadual', 'Pública Municipal', 'Privada com Fins Lucrativos', 'Privada sem Fins Lucrativos'],
-        'Total': [
-            df_filtrado['Total geral federal'].sum(),
-            df_filtrado['Total geral estadual'].sum(),
-            df_filtrado['Total geral municipal'].sum(),
-            df_filtrado['Total geral com fins'].sum(),
-            df_filtrado['Total geral sem fins'].sum()
-        ],
-        'Tipo': ['Pública', 'Pública', 'Pública', 'Privada', 'Privada']
-    }
-    df_detalhe = pd.DataFrame(data_detalhe)
-    
-    fig_detalhe_adm = px.bar(
-        df_detalhe,
-        x='Categoria',
-        y='Total',
-        color='Tipo',
-        title=f'Detalhamento de {tipo_analise} por Tipo de Instituição',
-        labels={'Total': f'Número de {tipo_analise}', 'Categoria': 'Categoria Administrativa Detalhada'},
-        text_auto=True
-    )
-    st.plotly_chart(fig_detalhe_adm, use_container_width=True)
-
+    st.markdown(f"##### Distribuição de {tipo_analise} por Categoria Administrativa e Modalidade ({ano_selecionado})")
+    c1, c2 = st.columns(2)
+    with c1:
+        df_mod_publica = pd.DataFrame({
+            'Modalidade': ['Presencial', 'Remota (EAD)'],
+            'Total': [total_presencial_publica, total_remota_publica]
+        })
+        fig_dist_mod_publica = px.pie(
+            df_mod_publica,
+            names='Modalidade',
+            values='Total',
+            title="Instituições Públicas",
+            hole=0.3,
+            color='Modalidade',
+            color_discrete_map=mapa_de_cores
+        )
+        st.plotly_chart(fig_dist_mod_publica, use_container_width=True)
+        df_adm_presencial = pd.DataFrame({
+            'Categoria': ['Pública', 'Privada'],
+            'Total': [total_presencial_publica, total_presencial_privada]
+        })
+        fig_dist_adm_presencial = px.pie(
+            df_adm_presencial,
+            names='Categoria',
+            values='Total',
+            title="Modalidade Presencial",
+            hole=0.3,
+            color='Categoria',
+            color_discrete_map=mapa_de_cores
+        )
+        st.plotly_chart(fig_dist_adm_presencial, use_container_width=True)
+    with c2:
+        df_mod_privada = pd.DataFrame({
+            'Modalidade': ['Presencial', 'Remota (EAD)'],
+            'Total': [total_presencial_privada, total_remota_privada]
+        })
+        fig_dist_mod_privada = px.pie(
+            df_mod_privada,
+            names='Modalidade',
+            values='Total',
+            title="Instituições Privadas",
+            hole=0.3,
+            color='Modalidade',
+            color_discrete_map=mapa_de_cores
+        )
+        st.plotly_chart(fig_dist_mod_privada, use_container_width=True)
+        df_adm_remota = pd.DataFrame({
+            'Categoria': ['Pública', 'Privada'],
+            'Total': [total_remota_publica, total_remota_privada]
+        })
+        fig_dist_adm_remota = px.pie(
+            df_adm_remota,
+            names='Categoria',
+            values='Total',
+            title="Modalidade Remota (EAD)",
+            hole=0.3,
+            color='Categoria',
+            color_discrete_map=mapa_de_cores
+        )
+        st.plotly_chart(fig_dist_adm_remota, use_container_width=True)
 
 with tab3:
-    st.markdown(f"#### Dados Filtrados ({tipo_analise} - {ano_selecionado})")
+    st.markdown(f"##### Dados Filtrados ({tipo_analise} - {ano_selecionado})")
     st.dataframe(df_filtrado)
-    # Adiciona um botão para download dos dados filtrados
     @st.cache_data
-    def convert_df_to_csv(df):
-        return df.to_csv(index=False).encode('utf-8')
-
+    def convert_df_to_csv(df): return df.to_csv(index=False).encode('utf-8')
     csv = convert_df_to_csv(df_filtrado)
-    st.download_button(
-        label="Baixar dados como CSV",
-        data=csv,
-        file_name=f'{tipo_analise.lower()}_{ano_selecionado}.csv',
-        mime='text/csv',
-    )
+    st.download_button(label="Baixar dados como CSV", data=csv, file_name=f'{tipo_analise.lower()}_{ano_selecionado}.csv', mime='text/csv')
 
 # Comparação entre Ingressantes e Concluintes
 st.markdown("---")
