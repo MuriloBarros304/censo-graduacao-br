@@ -118,9 +118,9 @@ st.title(f"Dashboard do Censo da Educação Superior")
 st.markdown(f"Fonte: [Censo da Educação Superior 2023](https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/censo-da-educacao-superior)")
 st.markdown(f"### Análise de **{tipo_analise}** para **{texto_anos}**")
 
-# --- KPIs (Métricas Principais) ---
+# --- KPIs ---
 st.markdown("---")
-st.subheader("Visão Geral do Ano Selecionado")
+st.subheader(f"Visão Geral de {tipo_analise} {texto_anos}")
 total_geral = df_filtrado['Total geral'].sum()
 total_publica = df_filtrado['Total geral publica'].sum()
 total_privada = df_filtrado['Total geral privada'].sum()
@@ -155,8 +155,8 @@ with tab1:
         })
         fig_dist_adm = px.bar(
             df_adm,
-            x='Categoria',  # Eixo X com as categorias
-            y='Total',      # Eixo Y com os valores numéricos
+            x='Categoria',      # Eixo X com as categorias
+            y='Total',          # Eixo Y com os valores numéricos
             title="Geral Por Categoria Administrativa",
             color='Categoria',  # Colorir as barras pela categoria (funciona igual)
             color_discrete_map=mapa_de_cores,
@@ -172,8 +172,8 @@ with tab1:
         })
         fig_dist_mod = px.bar(
             df_mod,
-            x='Modalidade', # Eixo X
-            y='Total',      # Eixo Y
+            x='Modalidade',     # Eixo X
+            y='Total',          # Eixo Y
             title="Geral Por Modalidade de Ensino",
             color='Modalidade', # Colorir as barras pela modalidade
             color_discrete_map=mapa_de_cores,
