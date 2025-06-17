@@ -280,7 +280,7 @@ if grau_selecionado:
         help="Proporção de alunos que concluíram em relação aos ingressantes no período selecionado. Esta métrica ajuda a entender a retenção e conclusão dos alunos nas instituições de ensino superior."
     )
 
-    # Preparar dados para o gráfico de barras comparativo
+    # Preparar dados para o gráfico de barras comparativo (esta parte está correta)
     dados_comparativos = {
         'Métrica': ['Pública', 'Privada', 'Presencial', 'Remota (EAD)'],
         'Ingressantes': [
@@ -292,33 +292,38 @@ if grau_selecionado:
             df_con_filtrado['Total presencial'].sum(), df_con_filtrado['Total geral remota'].sum()
         ]
     }
-    df_comparativo_plot = pd.DataFrame(dados_comparativos).melt(
+    df_comparativo_plot = pd.DataFrame(dados_comparativos).melt( # Transformando o DataFrame para o formato longo
         id_vars='Métrica', var_name='Tipo', value_name='Número de Alunos'
     )
 
+    # Cria uma cópia para trabalhar os percentuais
     df_comparativo_percentual = df_comparativo_plot.copy()
-    df_comparativo_percentual['Número de Alunos'] = df_comparativo_percentual.groupby('Métrica')['Número de Alunos'].apply(
-        lambda x: (x / x.sum() * 100) if x.sum() > 0 else 0 # Adicionado if para evitar divisão por zero
-    ).round(2)
-    
+
+    soma_por_metrica = df_comparativo_percentual.groupby('Métrica')['Número de Alunos'].transform('sum')
+
+    df_comparativo_percentual['Percentual'] = (df_comparativo_percentual['Número de Alunos'] / soma_por_metrica * 100).round(2)
+
     # Gráfico de barras agrupado
     fig_comparativo = px.bar(
         df_comparativo_plot, x='Métrica', y='Número de Alunos', color='Tipo',
-        barmode='group', title=f"Comparativo Detalhado para o {texto_anos}",
+        barmode='group', title=f"Comparativo Detalhado para {texto_anos}",
         labels={'Número de Alunos': 'Total de Alunos', 'Métrica': 'Categoria'},
         text_auto=True, color_discrete_map={'Ingressantes':"#F9C825", 'Concluintes':"#D90505"}
     )
     st.plotly_chart(fig_comparativo, use_container_width=True)
 
-    # Gráfico de barras para porcentagens
+
+    # Gráfico de barras para porcentagens (usando a nova coluna 'Percentual')
     fig_comparativo_percentual = px.bar(
-        df_comparativo_percentual, x='Métrica', y='Número de Alunos', color='Tipo',
+        df_comparativo_percentual, 
+        x='Métrica',
+        y='Percentual', # Coluna criada pelo transform
+        color='Tipo',
         barmode='group', title=f"Composição Percentual para {texto_anos}",
-        labels={'Número de Alunos': 'Porcentagem (%)', 'Métrica': 'Categoria'},
+        labels={'Percentual': 'Porcentagem (%)', 'Métrica': 'Categoria'},
         color_discrete_map={'Ingressantes':"#40E159", 'Concluintes':"#35078B"},
-        text_template='%{y:.2f}%'
+        text_template='%{y:.2f}%' # Formata o texto que aparece na barra
     )
-    # O parâmetro text_auto=True não é mais necessário quando usamos texttemplate
     st.plotly_chart(fig_comparativo_percentual, use_container_width=True)
 
 else:
