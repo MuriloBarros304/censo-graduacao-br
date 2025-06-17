@@ -14,7 +14,8 @@ st.set_page_config(
 # @st.cache_data garante que o pré-processamento pesado só rode uma vez.
 @st.cache_data
 def carregar_dados():
-    path = 'https://raw.githubusercontent.com/MuriloBarros304/censo-graduacao-br/main/data/raw/tabelas_de_divulgacao_censo_da_educacao_superior_2023.xls'
+    # path = 'https://raw.githubusercontent.com/MuriloBarros304/censo-graduacao-br/main/data/raw/tabelas_de_divulgacao_censo_da_educacao_superior_2023.xls'
+    path = 'tabelas_de_divulgacao_censo_da_educacao_superior_2023.xls'
     
     try:
         df_ingressantes = pd.read_excel(path, sheet_name="Tab3.04", header=None)
@@ -116,7 +117,7 @@ df_filtrado = df_ativo[
 # --- Corpo Principal do Dashboard ---
 st.title(f"Dashboard do Censo da Educação Superior")
 st.markdown(f"Fonte: [Censo da Educação Superior 2023](https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/censo-da-educacao-superior)")
-st.markdown(f"### Análise de **{tipo_analise}** para o **{texto_anos}**")
+st.markdown(f"## Análise de **{tipo_analise}** para o **{texto_anos}**")
 
 # --- KPIs ---
 st.markdown("---")
@@ -139,14 +140,11 @@ col3.metric("Total em Instituições Privadas", f"{total_privada:,}".replace(","
 
 # --- Gráficos ---
 st.markdown("---")
-st.subheader("Análises Gráficas")
-
 mapa_de_cores = {'Pública': '#004A99', 'Privada': '#FFAA00', 'Presencial': '#28a745', 'Remota (EAD)': "#ea580f"}
-
 tab1, tab2, tab3 = st.tabs(["Distribuições Gerais", "Análise Detalhada", "Dados Brutos"])
 
 with tab1:
-    st.markdown(f"##### Distribuição Geral de {tipo_analise} ({texto_anos})")
+    st.markdown(f"#### Distribuição Geral de {tipo_analise} ({texto_anos})")
     c1, c2 = st.columns(2)
     with c1:
         df_adm = pd.DataFrame({
@@ -182,7 +180,7 @@ with tab1:
         st.plotly_chart(fig_dist_mod, use_container_width=True)
 
 with tab2:
-    st.markdown(f"##### Distribuição de {tipo_analise} por Categoria Administrativa e Modalidade ({texto_anos})")
+    st.markdown(f"#### Distribuição de {tipo_analise} por Categoria Administrativa e Modalidade ({texto_anos})")
     c1, c2 = st.columns(2)
     with c1:
         df_mod_publica = pd.DataFrame({
@@ -244,7 +242,7 @@ with tab2:
         st.plotly_chart(fig_dist_adm_remota, use_container_width=True)
 
 with tab3:
-    st.markdown(f"##### Dados Filtrados ({tipo_analise} - {texto_anos})")
+    st.markdown(f"#### Dados Filtrados ({tipo_analise} - {texto_anos})")
     st.dataframe(df_filtrado)
     @st.cache_data
     def convert_df_to_csv(df): return df.to_csv(index=False).encode('utf-8')
@@ -253,8 +251,9 @@ with tab3:
 
 # --- Comparação entre Ingressantes e Concluintes ---
 st.markdown("---")
-st.subheader(f"Comparativo Direto: Ingressantes vs. Concluintes ({texto_anos})")
+st.subheader(f"Ingressantes vs. Concluintes ({texto_anos})")
 if grau_selecionado:
+    st.subheader("Comparação de Ingressantes e Concluintes em Valores Absolutos")
     st.markdown(f"Analisando os graus: **{', '.join(grau_selecionado)}**")
 
     # Filtrar ambos os dataframes com base nas seleções da sidebar
@@ -270,17 +269,15 @@ if grau_selecionado:
     # Calcular totais para a métrica
     total_ing = df_ing_filtrado['Total geral'].sum()
     total_con = df_con_filtrado['Total geral'].sum()
-    proporcao = (total_con / total_ing ) if total_ing > 0 else 0
+    proporcao = (total_con / total_ing ) * 100 if total_ing > 0 else 0
 
     st.metric(
         label=f"Proporção Concluintes / Ingressantes no {texto_anos}",
         value=f"{proporcao:.2f} %",
-        delta=f"{total_con} concluíram de {total_ing} ingressantes",
-        delta_color="normal",
         help="Proporção de alunos que concluíram em relação aos ingressantes no período selecionado. Esta métrica ajuda a entender a retenção e conclusão dos alunos nas instituições de ensino superior."
     )
 
-    # Preparar dados para o gráfico de barras comparativo (esta parte está correta)
+    # Preparar dados para o gráfico de barras comparativo
     dados_comparativos = {
         'Métrica': ['Pública', 'Privada', 'Presencial', 'Remota (EAD)'],
         'Ingressantes': [
@@ -296,36 +293,101 @@ if grau_selecionado:
         id_vars='Métrica', var_name='Tipo', value_name='Número de Alunos'
     )
 
-    # Cria uma cópia para trabalhar os percentuais
-    df_comparativo_percentual = df_comparativo_plot.copy()
-
-    soma_por_metrica = df_comparativo_percentual.groupby('Métrica')['Número de Alunos'].transform('sum')
-
-    df_comparativo_percentual['Percentual'] = (df_comparativo_percentual['Número de Alunos'] / soma_por_metrica * 100).round(2)
-
     # Gráfico de barras agrupado
     fig_comparativo = px.bar(
         df_comparativo_plot, x='Métrica', y='Número de Alunos', color='Tipo',
-        barmode='group', title=f"Comparativo Detalhado para {texto_anos}",
+        barmode='group', title=f"Comparativo Detalhado para o {texto_anos}",
         labels={'Número de Alunos': 'Total de Alunos', 'Métrica': 'Categoria'},
         text_auto=True, color_discrete_map={'Ingressantes':"#F9C825", 'Concluintes':"#D90505"}
     )
     st.plotly_chart(fig_comparativo, use_container_width=True)
 
-    df_comparativo_percentual['TextoFormatado'] = df_comparativo_percentual['Percentual'].apply(lambda x: f'{x:.2f}%')
-    # Gráfico de barras para porcentagens (usando a nova coluna 'Percentual')
-    fig_comparativo_percentual = px.bar(
-        df_comparativo_percentual, 
-        x='Métrica',
-        y='Percentual', # Coluna criada pelo transform
-        color='Tipo',
-        barmode='group', title=f"Composição Percentual para {texto_anos}",
-        labels={'Percentual': 'Porcentagem (%)', 'Métrica': 'Categoria'},
-        color_discrete_map={'Ingressantes':"#40E159", 'Concluintes':"#35078B"},
-        text='TextoFormatado'
+    st.markdown("---")
+    st.subheader("Comparação de Ingressantes e Concluintes em Taxa de Aproveitamento")
+
+    st.sidebar.markdown("### Filtros da Taxa de Aproveitamento")
+
+    # Slider para selecionar o intervalo de anos de INGRESSO
+    anos_disponiveis = sorted(df_ingressantes['Ano'].unique())
+    anos_ingresso_selecionados = st.sidebar.slider(
+        "Selecione o período de ingresso para a análise:",
+        min_value=min(anos_disponiveis),
+        max_value=max(anos_disponiveis) - 5, # Garante que há dados de conclusão
+        value=(min(anos_disponiveis), max(anos_disponiveis) - 6)
     )
-    fig_comparativo_percentual.update_traces(textposition='outside')
-    st.plotly_chart(fig_comparativo_percentual, use_container_width=True)
+
+    # Input para a defasagem de anos
+    defasagem_anos = st.sidebar.number_input(
+        "Defasagem de anos para conclusão:",
+        min_value=1,
+        max_value=10,
+        value=5
+    )
+
+    # Gera a lista de anos de ingresso a partir da seleção do slider
+    anos_ing = range(anos_ingresso_selecionados[0], anos_ingresso_selecionados[1] + 1)
+
+    modalidades = {
+        'Geral':           ('Total geral',               'Total geral'),
+        'Presencial Pub':  ('Total presencial publica',  'Total presencial publica'),
+        'Presencial Priv': ('Total presencial privada',  'Total presencial privada'),
+        'Remota Pub':      ('Total remota publica',      'Total remota publica'),
+        'Remota Priv':     ('Total remota privada',      'Total remota privada'),
+    }
+
+    records = []
+    for ano in anos_ing:
+        ano_conc = ano + defasagem_anos
+        # Verifica se o ano de conclusão existe nos dados para evitar erros
+        if ano_conc in df_concluintes['Ano'].unique():
+            for nome, (c_ing, c_conc) in modalidades.items():
+                ing = df_ingressantes.loc[df_ingressantes['Ano']==ano, c_ing].sum()
+                conc = df_concluintes.loc[df_concluintes['Ano']==ano_conc, c_conc].sum()
+                taxa = (conc/ing*100) if ing>0 else 0
+                records.append({
+                    'Ano Ingresso':       ano,
+                    'Ano Conclusão':      ano_conc,
+                    'Modalidade':         nome,
+                    'Taxa de Aproveitamento (%)': round(taxa, 2)
+                })
+
+    # Cria o DataFrame no formato longo (perfeito para Plotly)
+    df_taxas = pd.DataFrame(records)
+
+    # Verifica se o DataFrame não está vazio antes de plotar
+    if not df_taxas.empty:
+        fig_taxas = px.line(
+            df_taxas,
+            x='Ano Conclusão',
+            y='Taxa de Aproveitamento (%)',
+            color='Modalidade',  # Cria uma linha para cada modalidade automaticamente
+            markers=True,        # Adiciona marcadores (bolinhas) em cada ponto
+            title=f'Taxa de Aproveitamento ({defasagem_anos} anos após ingresso)',
+            labels={
+                "Ano Conclusão": "Ano de Conclusão",
+                "Taxa de Aproveitamento (%)": "Taxa de Aproveitamento",
+                "Modalidade": "Modalidade de Ensino"
+            }
+        )
+
+        # Melhora a formatação do eixo Y e das informações do hover
+        fig_taxas.update_yaxes(ticksuffix="%")
+        fig_taxas.update_xaxes(
+            tickmode='linear',
+            dtick=1 # Intervalo de 1 ano
+        )
+        fig_taxas.update_traces( # Atualiza as linhas para incluir marcadores
+            hovertemplate="<b>Modalidade:</b> %{customdata[0]}<br><b>Ano Conclusão:</b> %{x}<br><b>Taxa:</b> %{y:.2f}%<br><b>Ano Ingresso:</b> %{customdata[1]}<extra></extra>",
+            customdata=df_taxas[['Modalidade', 'Ano Ingresso']]
+        )
+
+        st.plotly_chart(fig_taxas, use_container_width=True)
+
+        # Exibir a tabela de dados
+        with st.expander("Ver dados da tabela"):
+            st.dataframe(df_taxas)
+    else:
+        st.warning("Nenhum dado encontrado para o período e defasagem selecionados.")
 
 else:
     st.warning("Selecione pelo menos um Grau Acadêmico na barra lateral para ver a comparação.")
