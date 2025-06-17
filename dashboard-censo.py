@@ -277,7 +277,6 @@ if grau_selecionado:
         value=f"{proporcao:.2f} %",
         delta=f"{total_con} concluíram de {total_ing} ingressantes",
         delta_color="normal",
-        key="proporcao_concluintes_ingressantes",
         help="Proporção de alunos que concluíram em relação aos ingressantes no período selecionado. Esta métrica ajuda a entender a retenção e conclusão dos alunos nas instituições de ensino superior."
     )
 
@@ -299,9 +298,8 @@ if grau_selecionado:
 
     df_comparativo_percentual = df_comparativo_plot.copy()
     df_comparativo_percentual['Número de Alunos'] = df_comparativo_percentual.groupby('Métrica')['Número de Alunos'].apply(
-        lambda x: (x / x.sum() * 100).round(2)
-    )
-    df_comparativo_percentual['Número de Alunos'] = df_comparativo_percentual['Número de Alunos'].astype(str) + '%'
+        lambda x: (x / x.sum() * 100) if x.sum() > 0 else 0 # Adicionado if para evitar divisão por zero
+    ).round(2)
     
     # Gráfico de barras agrupado
     fig_comparativo = px.bar(
@@ -315,10 +313,12 @@ if grau_selecionado:
     # Gráfico de barras para porcentagens
     fig_comparativo_percentual = px.bar(
         df_comparativo_percentual, x='Métrica', y='Número de Alunos', color='Tipo',
-        barmode='group', title=f"Comparativo Percentual para o {texto_anos}",
+        barmode='group', title=f"Composição Percentual para {texto_anos}",
         labels={'Número de Alunos': 'Porcentagem (%)', 'Métrica': 'Categoria'},
-        text_auto=True, color_discrete_map={'Ingressantes':"#40E159", 'Concluintes':"#35078B"}
+        color_discrete_map={'Ingressantes':"#40E159", 'Concluintes':"#35078B"},
+        text_template='%{y:.2f}%'
     )
+    # O parâmetro text_auto=True não é mais necessário quando usamos texttemplate
     st.plotly_chart(fig_comparativo_percentual, use_container_width=True)
 
 else:
