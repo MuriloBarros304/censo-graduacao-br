@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import requests
-import io
 
 # --- Configuração da Página ---
 # A configuração da página deve ser o primeiro comando do Streamlit
@@ -17,16 +15,10 @@ st.set_page_config(
 @st.cache_data
 def carregar_dados():
     path = 'https://raw.githubusercontent.com/MuriloBarros304/censo-graduacao-br/main/data/raw/tabelas_de_divulgacao_censo_da_educacao_superior_2023.xls'
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
     
     try:
-        response = requests.get(path, headers=headers, timeout=30)
-        response.raise_for_status()
-        file_content = io.BytesIO(response.content)
-        
-        df_ingressantes = pd.read_excel(file_content, sheet_name="Tab3.04", header=None)
-        file_content.seek(0)
-        df_concluintes = pd.read_excel(file_content, sheet_name="Tab3.05", header=None)
+        df_ingressantes = pd.read_excel(path, sheet_name="Tab3.04", header=None)
+        df_concluintes = pd.read_excel(path, sheet_name="Tab3.05", header=None)
         
         df_ingressantes = df_ingressantes.iloc[7:].drop(71)
         df_ingressantes.columns = [
@@ -58,17 +50,21 @@ def carregar_dados():
             
         return df_ingressantes, df_concluintes
     
-    except requests.exceptions.RequestException as e:
-        st.error(f"Falha de rede ao carregar os dados. Verifique sua conexão. Erro: {e}")
+    except pd.errors.EmptyDataError:
+        st.error("Erro ao carregar os dados. O arquivo está vazio ou não foi encontrado.")
+    except pd.errors.ParserError as e:
+        st.error(f"Erro de análise ao carregar os dados. Verifique o formato do arquivo. Erro: {e}")
+    except Exception as e:
+        st.error(f"Ocorreu um erro inesperado ao carregar os dados: {e}")
         return None, None
 
 # Carrega os dados usando a função cacheada
 df_ingressantes, df_concluintes = carregar_dados()
 
 if df_ingressantes is None or df_concluintes is None:
-    st.stop()  # Interrompe a execução se os dados não puderem ser carregados
+    st.stop() # Interrompe a execução se os dados não puderem ser carregados
 
-# --- Barra Lateral (Sidebar) com Filtros ---
+# --- Sidebar com Filtros ---
 st.sidebar.image("images/logo.png", width=250)
 st.sidebar.title("Filtros")
 st.sidebar.markdown("Use os filtros abaixo para explorar os dados:")
@@ -84,16 +80,26 @@ tipo_analise = st.sidebar.radio(
 df_ativo = df_ingressantes if tipo_analise == "Ingressantes" else df_concluintes
 
 # Filtro de intervalo de anos
-ano_min = df_ativo["Ano"].min()
-ano_max = df_ativo["Ano"].max()
-ano_selecionado = st.sidebar.slider(
-    "Selecione o Ano:",
+ano_min = int(df_ativo["Ano"].min())
+ano_max = int(df_ativo["Ano"].max())
+
+anos_selecionados = st.sidebar.slider(
+    "Selecione o Período:",
     min_value=ano_min,
     max_value=ano_max,
-    value=ano_max # Padrão para o ano mais recente
+    value=(ano_min, ano_max) # Padrão: seleciona o intervalo completo
 )
 
-# Filtro de grau acadêmico (excluindo 'Total' para evitar duplicidade nas somas)
+# Desempacota os anos selecionados
+ano_inicio, ano_fim = anos_selecionados
+
+# Cria um texto dinâmico para os títulos
+if ano_inicio == ano_fim:
+    texto_anos = f"o ano de {ano_inicio}"
+else:
+    texto_anos = f"o período de {ano_inicio} a {ano_fim}"
+
+# Filtro de grau acadêmico
 graus_disponiveis = df_ativo[(df_ativo['Grau'] != 'Total') & (df_ativo['Grau'] != 'Não aplicável')]['Grau'].unique()
 grau_selecionado = st.sidebar.multiselect(
     "Selecione o Grau Acadêmico:",
@@ -103,13 +109,14 @@ grau_selecionado = st.sidebar.multiselect(
 
 # Filtra o dataframe com base nas seleções
 df_filtrado = df_ativo[
-    (df_ativo["Ano"] == ano_selecionado) &
+    (df_ativo['Ano'].between(ano_inicio, ano_fim)) &
     (df_ativo["Grau"].isin(grau_selecionado))
 ]
 
 # --- Corpo Principal do Dashboard ---
 st.title(f"Dashboard do Censo da Educação Superior")
-st.markdown(f"### Análise de **{tipo_analise}** para o ano de **{ano_selecionado}**")
+st.markdown(f"Fonte: [Censo da Educação Superior 2023](https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/censo-da-educacao-superior)")
+st.markdown(f"### Análise de **{tipo_analise}** para **{texto_anos}**")
 
 # --- KPIs (Métricas Principais) ---
 st.markdown("---")
@@ -130,8 +137,7 @@ col1.metric(f"Total de {tipo_analise}", f"{total_geral:,}".replace(",", "."))
 col2.metric("Total em Instituições Públicas", f"{total_publica:,}".replace(",", "."))
 col3.metric("Total em Instituições Privadas", f"{total_privada:,}".replace(",", "."))
 
-# --- Gráficos da Visão Geral ---
- # --- SEÇÃO DE ANÁLISES COM ABAS ---
+# --- Gráficos ---
 st.markdown("---")
 st.subheader("Análises Gráficas")
 
@@ -139,8 +145,8 @@ mapa_de_cores = {'Pública': '#004A99', 'Privada': '#FFAA00', 'Presencial': '#28
 
 tab1, tab2, tab3 = st.tabs(["Distribuições Gerais", "Análise Detalhada", "Dados Brutos"])
 
-with tab1: # Supondo que você renomeou a tab1 para tab_geral
-    st.markdown(f"##### Distribuição Geral de {tipo_analise} ({ano_selecionado})")
+with tab1:
+    st.markdown(f"##### Distribuição Geral de {tipo_analise} ({texto_anos})")
     c1, c2 = st.columns(2)
     with c1:
         df_adm = pd.DataFrame({
@@ -176,7 +182,7 @@ with tab1: # Supondo que você renomeou a tab1 para tab_geral
         st.plotly_chart(fig_dist_mod, use_container_width=True)
 
 with tab2:
-    st.markdown(f"##### Distribuição de {tipo_analise} por Categoria Administrativa e Modalidade ({ano_selecionado})")
+    st.markdown(f"##### Distribuição de {tipo_analise} por Categoria Administrativa e Modalidade ({texto_anos})")
     c1, c2 = st.columns(2)
     with c1:
         df_mod_publica = pd.DataFrame({
@@ -238,26 +244,26 @@ with tab2:
         st.plotly_chart(fig_dist_adm_remota, use_container_width=True)
 
 with tab3:
-    st.markdown(f"##### Dados Filtrados ({tipo_analise} - {ano_selecionado})")
+    st.markdown(f"##### Dados Filtrados ({tipo_analise} - {texto_anos})")
     st.dataframe(df_filtrado)
     @st.cache_data
     def convert_df_to_csv(df): return df.to_csv(index=False).encode('utf-8')
     csv = convert_df_to_csv(df_filtrado)
-    st.download_button(label="Baixar dados como CSV", data=csv, file_name=f'{tipo_analise.lower()}_{ano_selecionado}.csv', mime='text/csv')
+    st.download_button(label="Baixar dados como CSV", data=csv, file_name=f'{tipo_analise.lower()}_{anos_selecionados}.csv', mime='text/csv')
 
 # Comparação entre Ingressantes e Concluintes
 st.markdown("---")
-st.subheader(f"Comparativo Direto: Ingressantes vs. Concluintes ({ano_selecionado})")
+st.subheader(f"Comparativo Direto: Ingressantes vs. Concluintes ({texto_anos})")
 if grau_selecionado:
     st.markdown(f"Analisando os graus: **{', '.join(grau_selecionado)}**")
 
     # Filtrar ambos os dataframes com base nas seleções da sidebar
     df_ing_filtrado = df_ingressantes[
-        (df_ingressantes["Ano"] == ano_selecionado) &
+        (df_ingressantes['Ano'].between(ano_inicio, ano_fim)) &
         (df_ingressantes["Grau"].isin(grau_selecionado))
     ]
     df_con_filtrado = df_concluintes[
-        (df_concluintes["Ano"] == ano_selecionado) &
+        (df_concluintes["Ano"].between(ano_inicio, ano_fim)) &
         (df_concluintes["Grau"].isin(grau_selecionado))
     ]
 
@@ -267,7 +273,7 @@ if grau_selecionado:
     proporcao = (total_con / total_ing * 100) if total_ing > 0 else 0
 
     st.metric(
-        label=f"Proporção Concluintes / Ingressantes em {ano_selecionado}",
+        label=f"Proporção Concluintes / Ingressantes em {anos_selecionados}",
         value=f"{proporcao:.2f} %",
         help="Este valor representa quantos alunos se formaram para cada 100 que ingressaram, considerando os filtros selecionados. Não é uma taxa de evasão real, mas um indicador da proporção entre os dois grupos no mesmo ano."
     )
@@ -291,7 +297,7 @@ if grau_selecionado:
     # Gráfico de barras agrupado
     fig_comparativo = px.bar(
         df_comparativo_plot, x='Métrica', y='Número de Alunos', color='Tipo',
-        barmode='group', title=f"Comparativo Detalhado para {ano_selecionado}",
+        barmode='group', title=f"Comparativo Detalhado para {texto_anos}",
         labels={'Número de Alunos': 'Total de Alunos', 'Métrica': 'Categoria'},
         text_auto=True, color_discrete_map={'Ingressantes':'#636EFA', 'Concluintes':'#FFA15A'}
     )
@@ -299,3 +305,13 @@ if grau_selecionado:
 
 else:
     st.warning("Selecione pelo menos um Grau Acadêmico na barra lateral para ver a comparação.")
+
+st.markdown("---")
+st.markdown("### Sobre o Dashboard")
+st.markdown("""
+Este dashboard foi desenvolvido para facilitar a visualização e análise dos dados do Censo da Educação Superior de 2023. Ele permite que usuários explorem as informações sobre ingressantes e concluintes, filtrando por ano e grau acadêmico.
+A análise inclui gráficos interativos que ajudam a entender as tendências e distribuições dos dados, além de permitir comparações diretas entre ingressantes e concluintes.
+Para mais informações, consulte a [documentação do Streamlit](https://docs.streamlit.io/) e o [repositório do projeto](https://github.com/MuriloBarros304/censo-graduacao-br).
+### Autores
+- [Murilo Barros](https://github.com/MuriloBarros304)
+- [Pablo Paraguai](https://github.com/pabloart702)""")
