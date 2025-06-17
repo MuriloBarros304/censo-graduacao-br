@@ -95,9 +95,9 @@ ano_inicio, ano_fim = anos_selecionados
 
 # Cria um texto dinâmico para os títulos
 if ano_inicio == ano_fim:
-    texto_anos = f"o ano de {ano_inicio}"
+    texto_anos = f"ano de {ano_inicio}"
 else:
-    texto_anos = f"o período de {ano_inicio} a {ano_fim}"
+    texto_anos = f"período de {ano_inicio} a {ano_fim}"
 
 # Filtro de grau acadêmico
 graus_disponiveis = df_ativo[(df_ativo['Grau'] != 'Total') & (df_ativo['Grau'] != 'Não aplicável')]['Grau'].unique()
@@ -116,7 +116,7 @@ df_filtrado = df_ativo[
 # --- Corpo Principal do Dashboard ---
 st.title(f"Dashboard do Censo da Educação Superior")
 st.markdown(f"Fonte: [Censo da Educação Superior 2023](https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/censo-da-educacao-superior)")
-st.markdown(f"### Análise de **{tipo_analise}** para **{texto_anos}**")
+st.markdown(f"### Análise de **{tipo_analise}** para o **{texto_anos}**")
 
 # --- KPIs ---
 st.markdown("---")
@@ -251,7 +251,7 @@ with tab3:
     csv = convert_df_to_csv(df_filtrado)
     st.download_button(label="Baixar dados como CSV", data=csv, file_name=f'{tipo_analise.lower()}_{anos_selecionados}.csv', mime='text/csv')
 
-# Comparação entre Ingressantes e Concluintes
+# --- Comparação entre Ingressantes e Concluintes ---
 st.markdown("---")
 st.subheader(f"Comparativo Direto: Ingressantes vs. Concluintes ({texto_anos})")
 if grau_selecionado:
@@ -270,12 +270,15 @@ if grau_selecionado:
     # Calcular totais para a métrica
     total_ing = df_ing_filtrado['Total geral'].sum()
     total_con = df_con_filtrado['Total geral'].sum()
-    proporcao = (total_con / total_ing * 100) if total_ing > 0 else 0
+    proporcao = (total_con / total_ing ) if total_ing > 0 else 0
 
     st.metric(
-        label=f"Proporção Concluintes / Ingressantes em {anos_selecionados}",
+        label=f"Proporção Concluintes / Ingressantes no {texto_anos}",
         value=f"{proporcao:.2f} %",
-        help="Este valor representa quantos alunos se formaram para cada 100 que ingressaram, considerando os filtros selecionados. Não é uma taxa de evasão real, mas um indicador da proporção entre os dois grupos no mesmo ano."
+        delta=f"{total_con} concluíram de {total_ing} ingressantes",
+        delta_color="normal",
+        key="proporcao_concluintes_ingressantes",
+        help="Proporção de alunos que concluíram em relação aos ingressantes no período selecionado. Esta métrica ajuda a entender a retenção e conclusão dos alunos nas instituições de ensino superior."
     )
 
     # Preparar dados para o gráfico de barras comparativo
@@ -293,21 +296,36 @@ if grau_selecionado:
     df_comparativo_plot = pd.DataFrame(dados_comparativos).melt(
         id_vars='Métrica', var_name='Tipo', value_name='Número de Alunos'
     )
+
+    df_comparativo_percentual = df_comparativo_plot.copy()
+    df_comparativo_percentual['Número de Alunos'] = df_comparativo_percentual.groupby('Métrica')['Número de Alunos'].apply(
+        lambda x: (x / x.sum() * 100).round(2)
+    )
+    df_comparativo_percentual['Número de Alunos'] = df_comparativo_percentual['Número de Alunos'].astype(str) + '%'
     
     # Gráfico de barras agrupado
     fig_comparativo = px.bar(
         df_comparativo_plot, x='Métrica', y='Número de Alunos', color='Tipo',
-        barmode='group', title=f"Comparativo Detalhado para {texto_anos}",
+        barmode='group', title=f"Comparativo Detalhado para o {texto_anos}",
         labels={'Número de Alunos': 'Total de Alunos', 'Métrica': 'Categoria'},
-        text_auto=True, color_discrete_map={'Ingressantes':'#636EFA', 'Concluintes':'#FFA15A'}
+        text_auto=True, color_discrete_map={'Ingressantes':"#F9C825", 'Concluintes':"#D90505"}
     )
     st.plotly_chart(fig_comparativo, use_container_width=True)
+
+    # Gráfico de barras para porcentagens
+    fig_comparativo_percentual = px.bar(
+        df_comparativo_percentual, x='Métrica', y='Número de Alunos', color='Tipo',
+        barmode='group', title=f"Comparativo Percentual para o {texto_anos}",
+        labels={'Número de Alunos': 'Porcentagem (%)', 'Métrica': 'Categoria'},
+        text_auto=True, color_discrete_map={'Ingressantes':"#40E159", 'Concluintes':"#35078B"}
+    )
+    st.plotly_chart(fig_comparativo_percentual, use_container_width=True)
 
 else:
     st.warning("Selecione pelo menos um Grau Acadêmico na barra lateral para ver a comparação.")
 
 st.markdown("---")
-st.markdown("### Sobre o Dashboard")
+st.markdown("#### Sobre o Dashboard")
 st.markdown("""
 Este dashboard foi desenvolvido para facilitar a visualização e análise dos dados do Censo da Educação Superior de 2023. Ele permite que usuários explorem as informações sobre ingressantes e concluintes, filtrando por ano e grau acadêmico.
 A análise inclui gráficos interativos que ajudam a entender as tendências e distribuições dos dados, além de permitir comparações diretas entre ingressantes e concluintes.
