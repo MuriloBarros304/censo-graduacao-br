@@ -120,7 +120,7 @@ st.markdown(f"### Análise de **{tipo_analise}** para **{texto_anos}**")
 
 # --- KPIs ---
 st.markdown("---")
-st.subheader(f"Visão Geral de {tipo_analise} {texto_anos}")
+st.subheader("Visão Geral")
 total_geral = df_filtrado['Total geral'].sum()
 total_publica = df_filtrado['Total geral publica'].sum()
 total_privada = df_filtrado['Total geral privada'].sum()
