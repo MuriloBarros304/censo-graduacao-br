@@ -14,8 +14,7 @@ st.set_page_config(
 # @st.cache_data garante que o pré-processamento pesado só rode uma vez.
 @st.cache_data
 def carregar_dados():
-    # path = 'https://raw.githubusercontent.com/MuriloBarros304/censo-graduacao-br/main/data/raw/tabelas_de_divulgacao_censo_da_educacao_superior_2023.xls'
-    path = 'tabelas_de_divulgacao_censo_da_educacao_superior_2023.xls'
+    path = 'https://raw.githubusercontent.com/MuriloBarros304/censo-graduacao-br/main/data/raw/tabelas_de_divulgacao_censo_da_educacao_superior_2023.xls'
     
     try:
         df_ingressantes = pd.read_excel(path, sheet_name="Tab3.04", header=None)
