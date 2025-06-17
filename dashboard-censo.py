@@ -312,7 +312,7 @@ if grau_selecionado:
     )
     st.plotly_chart(fig_comparativo, use_container_width=True)
 
-
+    df_comparativo_percentual['TextoFormatado'] = df_comparativo_percentual['Percentual'].apply(lambda x: f'{x:.2f}%')
     # Gráfico de barras para porcentagens (usando a nova coluna 'Percentual')
     fig_comparativo_percentual = px.bar(
         df_comparativo_percentual, 
@@ -322,8 +322,9 @@ if grau_selecionado:
         barmode='group', title=f"Composição Percentual para {texto_anos}",
         labels={'Percentual': 'Porcentagem (%)', 'Métrica': 'Categoria'},
         color_discrete_map={'Ingressantes':"#40E159", 'Concluintes':"#35078B"},
-        text_template='%{y:.2f}%' # Formata o texto que aparece na barra
+        text='TextoFormatado'
     )
+    fig_comparativo_percentual.update_traces(textposition='outside')
     st.plotly_chart(fig_comparativo_percentual, use_container_width=True)
 
 else:
