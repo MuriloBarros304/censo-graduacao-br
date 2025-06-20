@@ -431,7 +431,8 @@ if grau_selecionado:
 
     st.markdown("---")
     st.subheader("Comparação de Ingressantes e Concluintes em Taxa de Aproveitamento")
-
+    df_ing_para_taxa = df_ingressantes[df_ingressantes["Grau"].isin(grau_selecionado)]
+    df_con_para_taxa = df_concluintes[df_concluintes["Grau"].isin(grau_selecionado)]
     st.sidebar.markdown("### Filtros da Taxa de Aproveitamento")
 
     # Slider para selecionar o intervalo de anos de INGRESSO
@@ -483,7 +484,7 @@ if grau_selecionado:
 
     # --- Visão Geral da Taxa de Aproveitamento ---
     st.markdown(f"##### Visão Geral para uma defasagem de {defasagem_anos} anos")
-    df_taxa_geral = calcular_taxas(taxas_geral, df_ingressantes, df_concluintes, anos_ing, defasagem_anos)
+    df_taxa_geral = calcular_taxas(taxas_geral, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
     if not df_taxa_geral.empty:
         fig_geral = px.line(df_taxa_geral, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', markers=True, color_discrete_sequence=['#d62728'])
         fig_geral.update_yaxes(ticksuffix="%")
@@ -496,7 +497,7 @@ if grau_selecionado:
     tab1, tab2, tab3, tab4 = st.tabs(["Por Categoria Administrativa", "Por Modalidade de Ensino", "Público", "Privado"])
 
     with tab1:
-        df_plot = calcular_taxas(taxas_setor, df_ingressantes, df_concluintes, anos_ing, defasagem_anos)
+        df_plot = calcular_taxas(taxas_setor, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
         fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True, color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento por Categoria Administrativa')
         fig.update_yaxes(ticksuffix="%")
         fig.update_xaxes(dtick=1)
@@ -505,7 +506,7 @@ if grau_selecionado:
             st.dataframe(df_plot)
 
     with tab2:
-        df_plot = calcular_taxas(taxas_modalidade, df_ingressantes, df_concluintes, anos_ing, defasagem_anos)
+        df_plot = calcular_taxas(taxas_modalidade, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
         fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True,color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento por Modalidade de Ensino')
         fig.update_yaxes(ticksuffix="%")
         fig.update_xaxes(dtick=1)
@@ -514,7 +515,7 @@ if grau_selecionado:
             st.dataframe(df_plot)
 
     with tab3:
-        df_plot = calcular_taxas(taxas_detalhe_pub, df_ingressantes, df_concluintes, anos_ing, defasagem_anos)
+        df_plot = calcular_taxas(taxas_detalhe_pub, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
         fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True, color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento no Setor Público')
         fig.update_yaxes(ticksuffix="%")
         fig.update_xaxes(dtick=1)
@@ -523,7 +524,7 @@ if grau_selecionado:
             st.dataframe(df_plot)
 
     with tab4:
-        df_plot = calcular_taxas(taxas_detalhe_priv, df_ingressantes, df_concluintes, anos_ing, defasagem_anos)
+        df_plot = calcular_taxas(taxas_detalhe_priv, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
         fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True, color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento no Setor Privado')
         fig.update_yaxes(ticksuffix="%")
         fig.update_xaxes(dtick=1)
