@@ -530,10 +530,6 @@ if grau_selecionado:
         st.plotly_chart(fig, use_container_width=True)
         with st.expander("Ver dados da tabela"):
             st.dataframe(df_plot)
-
-        # Exibir a tabela de dados
-        with st.expander("Ver dados da tabela"):
-            st.dataframe(df_plot)
     
 else:
     st.warning("Selecione pelo menos um Grau Acadêmico na barra lateral para ver a comparação.")
