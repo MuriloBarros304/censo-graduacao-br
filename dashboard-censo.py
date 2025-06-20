@@ -60,14 +60,14 @@ def carregar_dados():
         return None, None
     
 @st.cache_data # Usando cache para otimizar os cálculos
-def calcular_taxas(dicionario_modalidades, _df_ingressantes, _df_concluintes, anos_ingresso, defasagem):
+def calcular_taxas(dicionario_modalidades, df_ingressantes, df_concluintes, anos_ingresso, defasagem):
     records = []
     for ano in anos_ingresso:
         ano_conc = ano + defasagem
-        if ano_conc in _df_concluintes['Ano'].unique():
+        if ano_conc in df_concluintes['Ano'].unique():
             for nome, (c_ing, c_conc) in dicionario_modalidades.items():
-                ing = _df_ingressantes.loc[_df_ingressantes['Ano']==ano, c_ing].sum()
-                conc = _df_concluintes.loc[_df_concluintes['Ano']==ano_conc, c_conc].sum()
+                ing = df_ingressantes.loc[df_ingressantes['Ano']==ano, c_ing].sum()
+                conc = df_concluintes.loc[df_concluintes['Ano']==ano_conc, c_conc].sum()
                 taxa = (conc/ing*100) if ing>0 else 0
                 records.append({
                     'Ano Ingresso': ano,
