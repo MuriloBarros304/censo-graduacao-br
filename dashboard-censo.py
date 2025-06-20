@@ -26,7 +26,7 @@ def carregar_dados():
             'Ano', 'Grau', 'Total geral', 'Total geral publica', 'Total geral federal', 'Total geral estadual', 'Total geral municipal', 'Total geral privada',
             'Total geral com fins', 'Total geral sem fins', 'Total presencial', 'Total presencial publica', 'Total presencial federal', 'Total presencial estadual',
             'Total presencial municipal', 'Total presencial privada', 'Total presencial com fins', 'Total presencial sem fins', 'Total geral remota',
-            'Total remota publica', 'Total remota  federal', 'Total remota estadual', 'Total remota municipal', 'Total remota privada', 'Total remota com fins', 'Total remota sem fins'
+            'Total remota publica', 'Total remota federal', 'Total remota estadual', 'Total remota municipal', 'Total remota privada', 'Total remota com fins', 'Total remota sem fins'
         ]
         df_ingressantes = df_ingressantes.dropna(how='all').reset_index(drop=True)
         df_ingressantes['Ano'] = df_ingressantes['Ano'].ffill()
@@ -34,10 +34,10 @@ def carregar_dados():
 
         df_concluintes = df_concluintes.iloc[8:].drop(61)
         df_concluintes.columns = [
-            'Ano', 'Grau', 'Total geral', 'Total geral publica', 'Total geral federal',  'Total geral estadual', 'Total geral municipal', 'Total geral privada',
+            'Ano', 'Grau', 'Total geral', 'Total geral publica', 'Total geral federal', 'Total geral estadual', 'Total geral municipal', 'Total geral privada',
             'Total geral com fins', 'Total geral sem fins', 'Total presencial', 'Total presencial publica', 'Total presencial federal', 'Total presencial estadual',
             'Total presencial municipal', 'Total presencial privada', 'Total presencial com fins', 'Total presencial sem fins', 'Total geral remota', 'Total remota publica',
-            'Total remota  federal', 'Total remota estadual', 'Total remota municipal','Total remota privada', 'Total remota com fins', 'Total remota sem fins'
+            'Total remota federal', 'Total remota estadual', 'Total remota municipal','Total remota privada', 'Total remota com fins', 'Total remota sem fins'
         ]
         df_concluintes = df_concluintes.dropna(how='all').reset_index(drop=True)
         df_concluintes['Ano'] = df_concluintes['Ano'].ffill()
@@ -123,14 +123,34 @@ st.markdown(f"## Análise de **{tipo_analise}** para o **{texto_anos}**")
 st.markdown("---")
 st.subheader("Visão Geral")
 total_geral = df_filtrado['Total geral'].sum()
+# Por categoria administrativa
 total_publica = df_filtrado['Total geral publica'].sum()
 total_privada = df_filtrado['Total geral privada'].sum()
+
+# Por modalidade
 total_presencial = df_filtrado['Total presencial'].sum()
 total_remota = df_filtrado['Total geral remota'].sum()
+
+# Por modalidade e categoria administrativa
 total_remota_publica = df_filtrado['Total remota publica'].sum()
 total_remota_privada = df_filtrado['Total remota privada'].sum()
 total_presencial_publica = df_filtrado['Total presencial publica'].sum()
 total_presencial_privada = df_filtrado['Total presencial privada'].sum()
+
+# Por modalidade e categoria administrativa (detalhado)
+# Públicas
+pres_estadual = df_filtrado['Total presencial estadual'].sum()
+pres_federal = df_filtrado['Total presencial federal'].sum()
+pres_mun = df_filtrado['Total presencial municipal'].sum()
+rem_estadual = df_filtrado['Total remota estadual'].sum()
+rem_federal = df_filtrado['Total remota federal'].sum()
+rem_mun = df_filtrado['Total remota municipal'].sum()
+
+# Privadas
+pres_com_fins = df_filtrado['Total presencial com fins'].sum()
+rem_com_fins = df_filtrado['Total remota com fins'].sum()
+pres_sem_fins = df_filtrado['Total presencial sem fins'].sum()
+rem_sem_fins = df_filtrado['Total remota sem fins'].sum()
 
 # Layout em colunas para os KPIs
 col1, col2, col3 = st.columns(3)
@@ -140,8 +160,23 @@ col3.metric("Total em Instituições Privadas", f"{total_privada:,}".replace(","
 
 # --- Gráficos ---
 st.markdown("---")
-mapa_de_cores = {'Pública': '#004A99', 'Privada': '#FFAA00', 'Presencial': '#28a745', 'Remota (EAD)': "#ea580f"}
-tab1, tab2, tab3 = st.tabs(["Distribuições Gerais", "Análise Detalhada", "Dados Brutos"])
+mapa_de_cores = {
+    # Cores Principais
+    'Pública': '#005A9C',
+    'Privada': '#FFAA00',
+    'Presencial': "#04AD1B",
+    'Remota (EAD)': "#A5BE5F",
+
+    # Detalhes do Setor Público (Tons de Azul)
+    'Federal': "#003A64",
+    'Estadual': "#2165A0",
+    'Municipal': "#4BCCFF",
+
+    # Detalhes do Setor Privado (Tons de Laranja)
+    'Com Fins': "#FFAA00",
+    'Sem Fins': "#FF6F00"
+}
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Distribuições Gerais", "Modalidades de Ensino", "Categorias Administrativas", "Pública", "Privada", "Dados Brutos"])
 
 with tab1:
     st.markdown(f"#### Distribuição Geral de {tipo_analise} ({texto_anos})")
@@ -178,25 +213,25 @@ with tab1:
             text_auto=True      # Adiciona os valores nas barras
         )
         st.plotly_chart(fig_dist_mod, use_container_width=True)
+    df_adm_pie = pd.DataFrame({
+        'Categoria': ['Pública', 'Privada'],
+        'Total': [total_publica, total_privada]
+    })
+    fig_adm_pie = px.pie(
+        df_adm_pie,
+        names='Categoria',
+        values='Total',
+        title="Distribuição Geral por Categoria Administrativa",
+        hole=0.5,
+        color='Categoria',
+        color_discrete_map=mapa_de_cores
+    )
+    st.plotly_chart(fig_adm_pie, use_container_width=True)
 
 with tab2:
-    st.markdown(f"#### Distribuição de {tipo_analise} por Categoria Administrativa e Modalidade ({texto_anos})")
+    st.markdown(f"#### Distribuição de Categorias Administrativas de {tipo_analise} por Modalidade de Ensino ({texto_anos})")
     c1, c2 = st.columns(2)
     with c1:
-        df_mod_publica = pd.DataFrame({
-            'Modalidade': ['Presencial', 'Remota (EAD)'],
-            'Total': [total_presencial_publica, total_remota_publica]
-        })
-        fig_dist_mod_publica = px.pie(
-            df_mod_publica,
-            names='Modalidade',
-            values='Total',
-            title="Instituições Públicas",
-            hole=0.3,
-            color='Modalidade',
-            color_discrete_map=mapa_de_cores
-        )
-        st.plotly_chart(fig_dist_mod_publica, use_container_width=True)
         df_adm_presencial = pd.DataFrame({
             'Categoria': ['Pública', 'Privada'],
             'Total': [total_presencial_publica, total_presencial_privada]
@@ -212,20 +247,6 @@ with tab2:
         )
         st.plotly_chart(fig_dist_adm_presencial, use_container_width=True)
     with c2:
-        df_mod_privada = pd.DataFrame({
-            'Modalidade': ['Presencial', 'Remota (EAD)'],
-            'Total': [total_presencial_privada, total_remota_privada]
-        })
-        fig_dist_mod_privada = px.pie(
-            df_mod_privada,
-            names='Modalidade',
-            values='Total',
-            title="Instituições Privadas",
-            hole=0.3,
-            color='Modalidade',
-            color_discrete_map=mapa_de_cores
-        )
-        st.plotly_chart(fig_dist_mod_privada, use_container_width=True)
         df_adm_remota = pd.DataFrame({
             'Categoria': ['Pública', 'Privada'],
             'Total': [total_remota_publica, total_remota_privada]
@@ -242,6 +263,112 @@ with tab2:
         st.plotly_chart(fig_dist_adm_remota, use_container_width=True)
 
 with tab3:
+    st.markdown(f"#### Distribuição de Modalidades de Ensino de {tipo_analise} por Categoria Administrativa ({texto_anos})")
+    c1, c2 = st.columns(2)
+    with c1:
+        df_mod_publica = pd.DataFrame({
+            'Modalidade': ['Presencial', 'Remota (EAD)'],
+            'Total': [total_presencial_publica, total_remota_publica]
+        })
+        fig_mod_publica = px.pie(
+            df_mod_publica,
+            names='Modalidade',
+            values='Total',
+            title="Instituições Públicas",
+            hole=0.3,
+            color='Modalidade',
+            color_discrete_map=mapa_de_cores
+        )
+        st.plotly_chart(fig_mod_publica, use_container_width=True)
+    with c2:
+        df_mod_privada = pd.DataFrame({
+            'Modalidade': ['Presencial', 'Remota (EAD)'],
+            'Total': [total_presencial_privada, total_remota_privada]
+        })
+        fig_mod_privada = px.pie(
+            df_mod_privada,
+            names='Modalidade',
+            values='Total',
+            title="Instituições Privadas",
+            hole=0.3,
+            color='Modalidade',
+            color_discrete_map=mapa_de_cores
+        )
+        st.plotly_chart(fig_mod_privada, use_container_width=True)
+
+with tab4:
+    st.markdown(f"#### Detalhamento de Categorias Administrativas de {tipo_analise} Para o Setor Público ({texto_anos})")
+    c1, c2 = st.columns(2)
+    with c1:
+        df_presencial_detalhado = pd.DataFrame({
+            'Categoria': ['Federal', 'Estadual', 'Municipal'],
+            'Total': [pres_federal, pres_estadual, pres_mun]
+        })
+        fig_presencial_detalhado = px.pie(
+            df_presencial_detalhado,
+            names='Categoria',
+            values='Total',
+            title="Modalidade Presencial",
+            hole=0.3,
+            color='Categoria',
+            color_discrete_map=mapa_de_cores
+        )
+        fig_presencial_detalhado.for_each_trace(lambda t: t.update(name=t.name.replace('Total presencial ', '').capitalize()))
+        st.plotly_chart(fig_presencial_detalhado, use_container_width=True)
+    with c2:
+        df_remota_detalhado = pd.DataFrame({
+            'Categoria': ['Federal', 'Estadual', 'Municipal'],
+            'Total': [rem_federal, rem_estadual, rem_mun]
+        })
+        fig_remota_detalhado = px.pie(
+            df_remota_detalhado,
+            names='Categoria',
+            values='Total',
+            title="Modalidade Remota (EAD)",
+            hole=0.3,
+            color='Categoria',
+            color_discrete_map=mapa_de_cores
+        )
+        fig_remota_detalhado.for_each_trace(lambda t: t.update(name=t.name.replace('Total remota ', '').capitalize()))
+        st.plotly_chart(fig_remota_detalhado, use_container_width=True)
+
+with tab5:
+    st.markdown(f"#### Detalhamento de Categorias Administrativas de {tipo_analise} Para o Setor Privado ({texto_anos})")
+    c1, c2 = st.columns(2)
+    with c1:
+        df_presencial_privada = pd.DataFrame({
+            'Categoria': ['Com Fins', 'Sem Fins'],
+            'Total': [pres_com_fins, pres_sem_fins]
+        })
+        fig_presencial_privada = px.pie(
+            df_presencial_privada,
+            names='Categoria',
+            values='Total',
+            title="Modalidade Presencial",
+            hole=0.3,
+            color='Categoria',
+            color_discrete_map=mapa_de_cores
+        )
+        fig_presencial_privada.for_each_trace(lambda t: t.update(name=t.name.replace('Total presencial ', '').replace(' fins', '').capitalize()))
+        st.plotly_chart(fig_presencial_privada, use_container_width=True)
+    with c2:
+        df_remota_privada = pd.DataFrame({
+            'Categoria': ['Com Fins', 'Sem Fins'],
+            'Total': [rem_com_fins, rem_sem_fins]
+        })
+        fig_remota_privada = px.pie(
+            df_remota_privada,
+            names='Categoria',
+            values='Total',
+            title="Modalidade Remota (EAD)",
+            hole=0.3,
+            color='Categoria',
+            color_discrete_map=mapa_de_cores
+        )
+        fig_remota_privada.for_each_trace(lambda t: t.update(name=t.name.replace('Total remota ', '').replace(' fins', '').capitalize()))
+        st.plotly_chart(fig_remota_privada, use_container_width=True)
+
+with tab6:
     st.markdown(f"#### Dados Filtrados ({tipo_analise} - {texto_anos})")
     st.dataframe(df_filtrado)
     @st.cache_data
