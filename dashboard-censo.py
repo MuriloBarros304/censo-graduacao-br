@@ -58,6 +58,24 @@ def carregar_dados():
     except Exception as e:
         st.error(f"Ocorreu um erro inesperado ao carregar os dados: {e}")
         return None, None
+    
+@st.cache_data # Usando cache para otimizar os cálculos
+def calcular_taxas(dicionario_modalidades, _df_ingressantes, _df_concluintes, anos_ingresso, defasagem):
+    records = []
+    for ano in anos_ingresso:
+        ano_conc = ano + defasagem
+        if ano_conc in _df_concluintes['Ano'].unique():
+            for nome, (c_ing, c_conc) in dicionario_modalidades.items():
+                ing = _df_ingressantes.loc[_df_ingressantes['Ano']==ano, c_ing].sum()
+                conc = _df_concluintes.loc[_df_concluintes['Ano']==ano_conc, c_conc].sum()
+                taxa = (conc/ing*100) if ing>0 else 0
+                records.append({
+                    'Ano Ingresso': ano,
+                    'Ano Conclusão': ano_conc,
+                    'Categoria': nome,
+                    'Taxa de Aproveitamento (%)': round(taxa, 2)
+                })
+    return pd.DataFrame(records)
 
 # Carrega os dados usando a função cacheada
 df_ingressantes, df_concluintes = carregar_dados()
@@ -455,24 +473,6 @@ if grau_selecionado:
 
     # Gera a lista de anos de ingresso a partir da seleção do slider
     anos_ing = range(anos_ingresso_selecionados[0], anos_ingresso_selecionados[1] + 1)
-
-    @st.cache_data # Usando cache para otimizar os cálculos
-    def calcular_taxas(dicionario_modalidades, _df_ingressantes, _df_concluintes, anos_ingresso, defasagem):
-        records = []
-        for ano in anos_ingresso:
-            ano_conc = ano + defasagem
-            if ano_conc in _df_concluintes['Ano'].unique():
-                for nome, (c_ing, c_conc) in dicionario_modalidades.items():
-                    ing = _df_ingressantes.loc[_df_ingressantes['Ano']==ano, c_ing].sum()
-                    conc = _df_concluintes.loc[_df_concluintes['Ano']==ano_conc, c_conc].sum()
-                    taxa = (conc/ing*100) if ing>0 else 0
-                    records.append({
-                        'Ano Ingresso': ano,
-                        'Ano Conclusão': ano_conc,
-                        'Categoria': nome,
-                        'Taxa de Aproveitamento (%)': round(taxa, 2)
-                    })
-        return pd.DataFrame(records)
 
     # --- Dicionários de Taxas ---
     taxas_geral = {'Taxa Geral': ('Total geral', 'Total geral')}
