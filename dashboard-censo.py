@@ -397,143 +397,142 @@ with tab6:
 # --- Comparação entre Ingressantes e Concluintes ---
 st.markdown("---")
 st.subheader(f"Ingressantes vs. Concluintes ({texto_anos})")
-if grau_selecionado:
-    st.subheader("Comparação de Ingressantes e Concluintes em Valores Absolutos")
-    st.markdown(f"Analisando os graus: **{', '.join(grau_selecionado)}**")
+st.subheader("Comparação de Ingressantes e Concluintes em Valores Absolutos")
+st.markdown(f"Analisando os graus: **{', '.join(grau_selecionado)}**")
 
-    # Filtrar ambos os dataframes com base nas seleções da sidebar
-    df_ing_filtrado = df_ingressantes[
-        (df_ingressantes['Ano'].between(ano_inicio, ano_fim)) &
-        (df_ingressantes["Grau"].isin(grau_selecionado))
+# Filtrar ambos os dataframes com base nas seleções da sidebar
+df_ing_filtrado = df_ingressantes[
+    (df_ingressantes['Ano'].between(ano_inicio, ano_fim)) &
+    (df_ingressantes["Grau"].isin(grau_selecionado))
+]
+df_con_filtrado = df_concluintes[
+    (df_concluintes["Ano"].between(ano_inicio, ano_fim)) &
+    (df_concluintes["Grau"].isin(grau_selecionado))
+]
+
+# Calcular totais para a métrica
+total_ing = df_ing_filtrado['Total geral'].sum()
+total_con = df_con_filtrado['Total geral'].sum()
+proporcao = (total_con / total_ing ) * 100 if total_ing > 0 else 0
+
+st.metric(
+    label=f"Proporção Concluintes / Ingressantes no {texto_anos}",
+    value=f"{proporcao:.2f} %",
+    help="Proporção de alunos que concluíram em relação aos ingressantes no período selecionado. Esta métrica ajuda a entender a retenção e conclusão dos alunos nas instituições de ensino superior. Fórmula utilizada: (Total Concluintes / Total Ingressantes) * 100."
+)
+
+# Preparar dados para o gráfico de barras comparativo
+dados_comparativos = {
+    'Métrica': ['Pública', 'Privada', 'Presencial', 'Remota (EAD)'],
+    'Ingressantes': [
+        df_ing_filtrado['Total geral publica'].sum(), df_ing_filtrado['Total geral privada'].sum(),
+        df_ing_filtrado['Total presencial'].sum(), df_ing_filtrado['Total geral remota'].sum()
+    ],
+    'Concluintes': [
+        df_con_filtrado['Total geral publica'].sum(), df_con_filtrado['Total geral privada'].sum(),
+        df_con_filtrado['Total presencial'].sum(), df_con_filtrado['Total geral remota'].sum()
     ]
-    df_con_filtrado = df_concluintes[
-        (df_concluintes["Ano"].between(ano_inicio, ano_fim)) &
-        (df_concluintes["Grau"].isin(grau_selecionado))
-    ]
+}
+df_comparativo_plot = pd.DataFrame(dados_comparativos).melt( # Transformando o DataFrame para o formato longo
+    id_vars='Métrica', var_name='Tipo', value_name='Número de Alunos'
+)
 
-    # Calcular totais para a métrica
-    total_ing = df_ing_filtrado['Total geral'].sum()
-    total_con = df_con_filtrado['Total geral'].sum()
-    proporcao = (total_con / total_ing ) * 100 if total_ing > 0 else 0
+# Gráfico de barras agrupado
+fig_comparativo = px.bar(
+    df_comparativo_plot, x='Métrica', y='Número de Alunos', color='Tipo',
+    barmode='group', title=f"Comparativo Detalhado para o {texto_anos}",
+    labels={'Número de Alunos': 'Total de Alunos', 'Métrica': 'Categoria'},
+    text_auto=True, color_discrete_map={'Ingressantes':"#F9C825", 'Concluintes':"#D90505"}
+)
+st.plotly_chart(fig_comparativo, use_container_width=True)
 
-    st.metric(
-        label=f"Proporção Concluintes / Ingressantes no {texto_anos}",
-        value=f"{proporcao:.2f} %",
-        help="Proporção de alunos que concluíram em relação aos ingressantes no período selecionado. Esta métrica ajuda a entender a retenção e conclusão dos alunos nas instituições de ensino superior. Fórmula utilizada: (Total Concluintes / Total Ingressantes) * 100."
-    )
+st.markdown("---")
+st.subheader("Comparação de Ingressantes e Concluintes em Taxa de Aproveitamento")
+df_ing_para_taxa = df_ingressantes[df_ingressantes["Grau"].isin(grau_selecionado)]
+df_con_para_taxa = df_concluintes[df_concluintes["Grau"].isin(grau_selecionado)]
+st.sidebar.markdown("### Filtros da Taxa de Aproveitamento")
 
-    # Preparar dados para o gráfico de barras comparativo
-    dados_comparativos = {
-        'Métrica': ['Pública', 'Privada', 'Presencial', 'Remota (EAD)'],
-        'Ingressantes': [
-            df_ing_filtrado['Total geral publica'].sum(), df_ing_filtrado['Total geral privada'].sum(),
-            df_ing_filtrado['Total presencial'].sum(), df_ing_filtrado['Total geral remota'].sum()
-        ],
-        'Concluintes': [
-            df_con_filtrado['Total geral publica'].sum(), df_con_filtrado['Total geral privada'].sum(),
-            df_con_filtrado['Total presencial'].sum(), df_con_filtrado['Total geral remota'].sum()
-        ]
-    }
-    df_comparativo_plot = pd.DataFrame(dados_comparativos).melt( # Transformando o DataFrame para o formato longo
-        id_vars='Métrica', var_name='Tipo', value_name='Número de Alunos'
-    )
+# Slider para selecionar o intervalo de anos de INGRESSO
+anos_disponiveis = sorted(df_ingressantes['Ano'].unique())
+anos_ingresso_selecionados = st.sidebar.slider(
+    "Selecione o período de ingresso para a análise:",
+    min_value=min(anos_disponiveis),
+    max_value=max(anos_disponiveis) - 5, # Garante que há dados de conclusão
+    value=(min(anos_disponiveis), max(anos_disponiveis) - 5), # Padrão: seleciona o intervalo completo menos 5 anos (defasagem padrão)
+    step=1
+)
 
-    # Gráfico de barras agrupado
-    fig_comparativo = px.bar(
-        df_comparativo_plot, x='Métrica', y='Número de Alunos', color='Tipo',
-        barmode='group', title=f"Comparativo Detalhado para o {texto_anos}",
-        labels={'Número de Alunos': 'Total de Alunos', 'Métrica': 'Categoria'},
-        text_auto=True, color_discrete_map={'Ingressantes':"#F9C825", 'Concluintes':"#D90505"}
-    )
-    st.plotly_chart(fig_comparativo, use_container_width=True)
+# Input para a defasagem de anos
+defasagem_anos = st.sidebar.number_input(
+    "Defasagem de anos para conclusão:",
+    min_value=1,
+    max_value=10,
+    value=5
+)
 
-    st.markdown("---")
-    st.subheader("Comparação de Ingressantes e Concluintes em Taxa de Aproveitamento")
-    df_ing_para_taxa = df_ingressantes[df_ingressantes["Grau"].isin(grau_selecionado)]
-    df_con_para_taxa = df_concluintes[df_concluintes["Grau"].isin(grau_selecionado)]
-    st.sidebar.markdown("### Filtros da Taxa de Aproveitamento")
+# Gera a lista de anos de ingresso a partir da seleção do slider
+anos_ing = range(anos_ingresso_selecionados[0], anos_ingresso_selecionados[1] + 1)
 
-    # Slider para selecionar o intervalo de anos de INGRESSO
-    anos_disponiveis = sorted(df_ingressantes['Ano'].unique())
-    anos_ingresso_selecionados = st.sidebar.slider(
-        "Selecione o período de ingresso para a análise:",
-        min_value=min(anos_disponiveis),
-        max_value=max(anos_disponiveis) - 5, # Garante que há dados de conclusão
-        value=(min(anos_disponiveis), max(anos_disponiveis) - 5), # Padrão: seleciona o intervalo completo menos 5 anos (defasagem padrão)
-        step=1
-    )
-
-    # Input para a defasagem de anos
-    defasagem_anos = st.sidebar.number_input(
-        "Defasagem de anos para conclusão:",
-        min_value=1,
-        max_value=10,
-        value=5
-    )
-
-    # Gera a lista de anos de ingresso a partir da seleção do slider
-    anos_ing = range(anos_ingresso_selecionados[0], anos_ingresso_selecionados[1] + 1)
-
-    # --- Dicionários de Taxas ---
-    taxas_geral = {'Taxa Geral': ('Total geral', 'Total geral')}
-    taxas_setor = {'Pública': ('Total geral publica', 'Total geral publica'), 'Privada': ('Total geral privada', 'Total geral privada')}
-    taxas_modalidade = {'Presencial': ('Total presencial', 'Total presencial'), 'Remota (EAD)': ('Total geral remota', 'Total geral remota')}
-    taxas_detalhe_pub = {'Federal': ('Total geral federal', 'Total geral federal'), 'Estadual': ('Total geral estadual', 'Total geral estadual'), 'Municipal': ('Total geral municipal', 'Total geral municipal')}
-    taxas_detalhe_priv = {'Com Fins': ('Total geral com fins', 'Total geral com fins'), 'Sem Fins': ('Total geral sem fins', 'Total geral sem fins')}
+# --- Dicionários de Taxas ---
+taxas_geral = {'Taxa Geral': ('Total geral', 'Total geral')}
+taxas_setor = {'Pública': ('Total geral publica', 'Total geral publica'), 'Privada': ('Total geral privada', 'Total geral privada')}
+taxas_modalidade = {'Presencial': ('Total presencial', 'Total presencial'), 'Remota (EAD)': ('Total geral remota', 'Total geral remota')}
+taxas_detalhe_pub = {'Federal': ('Total geral federal', 'Total geral federal'), 'Estadual': ('Total geral estadual', 'Total geral estadual'), 'Municipal': ('Total geral municipal', 'Total geral municipal')}
+taxas_detalhe_priv = {'Com Fins': ('Total geral com fins', 'Total geral com fins'), 'Sem Fins': ('Total geral sem fins', 'Total geral sem fins')}
 
 
-    # --- Visão Geral da Taxa de Aproveitamento ---
-    st.markdown(f"##### Visão Geral para uma defasagem de {defasagem_anos} anos")
-    df_taxa_geral = calcular_taxas(taxas_geral, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
-    if not df_taxa_geral.empty:
-        fig_geral = px.line(df_taxa_geral, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', markers=True, color_discrete_sequence=['#d62728'])
-        fig_geral.update_yaxes(ticksuffix="%")
-        fig_geral.update_xaxes(dtick=1)
-        st.plotly_chart(fig_geral, use_container_width=True)
-    else:
-        st.warning("Nenhum dado encontrado para o período e defasagem selecionados.")
-
-    st.markdown("### Análise Detalhada da Taxa de Aproveitamento")
-    tab1, tab2, tab3, tab4 = st.tabs(["Por Categoria Administrativa", "Por Modalidade de Ensino", "Público", "Privado"])
-
-    with tab1:
-        df_plot = calcular_taxas(taxas_setor, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
-        fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True, color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento por Categoria Administrativa')
-        fig.update_yaxes(ticksuffix="%")
-        fig.update_xaxes(dtick=1)
-        st.plotly_chart(fig, use_container_width=True, grid=True)
-        with st.expander("Ver dados da tabela"):
-            st.dataframe(df_plot)
-
-    with tab2:
-        df_plot = calcular_taxas(taxas_modalidade, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
-        fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True,color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento por Modalidade de Ensino')
-        fig.update_yaxes(ticksuffix="%")
-        fig.update_xaxes(dtick=1)
-        st.plotly_chart(fig, use_container_width=True)
-        with st.expander("Ver dados da tabela"):
-            st.dataframe(df_plot)
-
-    with tab3:
-        df_plot = calcular_taxas(taxas_detalhe_pub, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
-        fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True, color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento no Setor Público')
-        fig.update_yaxes(ticksuffix="%")
-        fig.update_xaxes(dtick=1)
-        st.plotly_chart(fig, use_container_width=True)
-        with st.expander("Ver dados da tabela"):
-            st.dataframe(df_plot)
-
-    with tab4:
-        df_plot = calcular_taxas(taxas_detalhe_priv, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
-        fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True, color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento no Setor Privado')
-        fig.update_yaxes(ticksuffix="%")
-        fig.update_xaxes(dtick=1)
-        st.plotly_chart(fig, use_container_width=True)
-        with st.expander("Ver dados da tabela"):
-            st.dataframe(df_plot)
-    
+# --- Visão Geral da Taxa de Aproveitamento ---
+st.markdown(f"##### Visão Geral para uma defasagem de {defasagem_anos} anos")
+df_taxa_geral = calcular_taxas(taxas_geral, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
+if not df_taxa_geral.empty:
+    fig_geral = px.line(df_taxa_geral, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', markers=True, color_discrete_sequence=['#d62728'])
+    fig_geral.update_yaxes(ticksuffix="%")
+    fig_geral.update_xaxes(dtick=1)
+    st.plotly_chart(fig_geral, use_container_width=True)
 else:
-    st.warning("Selecione pelo menos um Grau Acadêmico na barra lateral para ver a comparação.")
+    st.warning("Nenhum dado encontrado para o período e defasagem selecionados.")
+
+st.markdown("### Análise Detalhada da Taxa de Aproveitamento")
+tab1, tab2, tab3, tab4 = st.tabs(["Por Categoria Administrativa", "Por Modalidade de Ensino", "Público", "Privado"])
+
+with tab1:
+    df_plot = calcular_taxas(taxas_setor, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
+    fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True, color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento por Categoria Administrativa')
+    fig.update_yaxes(ticksuffix="%")
+    fig.update_xaxes(dtick=1)
+    st.plotly_chart(fig, use_container_width=True, grid=True)
+    with st.expander("Ver dados da tabela"):
+        st.dataframe(df_plot)
+
+with tab2:
+    df_plot = calcular_taxas(taxas_modalidade, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
+    fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True,color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento por Modalidade de Ensino')
+    fig.update_yaxes(ticksuffix="%")
+    fig.update_xaxes(dtick=1)
+    st.plotly_chart(fig, use_container_width=True)
+    with st.expander("Ver dados da tabela"):
+        st.dataframe(df_plot)
+
+with tab3:
+    df_plot = calcular_taxas(taxas_detalhe_pub, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
+    fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True, color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento no Setor Público')
+    fig.update_yaxes(ticksuffix="%")
+    fig.update_xaxes(dtick=1)
+    st.plotly_chart(fig, use_container_width=True)
+    with st.expander("Ver dados da tabela"):
+        st.dataframe(df_plot)
+
+with tab4:
+    df_plot = calcular_taxas(taxas_detalhe_priv, df_ing_para_taxa, df_con_para_taxa, anos_ing, defasagem_anos)
+    fig = px.line(df_plot, x='Ano Conclusão', y='Taxa de Aproveitamento (%)', color='Categoria', markers=True, color_discrete_map=mapa_de_cores, title='Taxa de Aproveitamento no Setor Privado')
+    fig.update_yaxes(ticksuffix="%")
+    fig.update_xaxes(dtick=1)
+    st.plotly_chart(fig, use_container_width=True)
+    with st.expander("Ver dados da tabela"):
+        st.dataframe(df_plot)
+
+if len(grau_selecionado) == 0:
+    st.warning("Nenhum grau acadêmico selecionado. Por favor, selecione pelo menos um grau para visualizar as taxas de aproveitamento.")
 
 st.markdown("---")
 st.markdown("#### Sobre o Dashboard")
