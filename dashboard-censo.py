@@ -247,7 +247,7 @@ with tab1:
     st.plotly_chart(fig_adm_pie, use_container_width=True)
 
 with tab2:
-    st.markdown(f"#### Distribuição de Categorias Administrativas de {tipo_analise} por Modalidade de Ensino ({texto_anos})")
+    st.markdown(f"#### Categorias Administrativas de {tipo_analise} por Modalidade de Ensino ({texto_anos})")
     c1, c2 = st.columns(2)
     with c1:
         df_adm_presencial = pd.DataFrame({
@@ -281,7 +281,7 @@ with tab2:
         st.plotly_chart(fig_dist_adm_remota, use_container_width=True)
 
 with tab3:
-    st.markdown(f"#### Distribuição de Modalidades de Ensino de {tipo_analise} por Categoria Administrativa ({texto_anos})")
+    st.markdown(f"#### Modalidades de Ensino de {tipo_analise} por Categoria Administrativa ({texto_anos})")
     c1, c2 = st.columns(2)
     with c1:
         df_mod_publica = pd.DataFrame({
