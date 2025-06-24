@@ -183,7 +183,7 @@ mapa_de_cores = {
     'Pública': '#005A9C',
     'Privada': '#FFAA00',
     'Presencial': "#04AD1B",
-    'Remota (EAD)': "#A5BE5F",
+    'Remota (EAD)': "#C11A00",
 
     # Detalhes do Setor Público (Tons de Azul)
     'Federal': "#003A64",
@@ -442,7 +442,7 @@ fig_comparativo = px.bar(
     df_comparativo_plot, x='Métrica', y='Número de Alunos', color='Tipo',
     barmode='group', title=f"Comparativo Detalhado para o {texto_anos}",
     labels={'Número de Alunos': 'Total de Alunos', 'Métrica': 'Categoria'},
-    text_auto=True, color_discrete_map={'Ingressantes':"#F9C825", 'Concluintes':"#D90505"}
+    text_auto=True, color_discrete_map={'Ingressantes':"#50C909", 'Concluintes':"#FF9B05"}
 )
 st.plotly_chart(fig_comparativo, use_container_width=True)
 
