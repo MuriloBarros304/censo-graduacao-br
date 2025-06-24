@@ -442,7 +442,7 @@ fig_comparativo = px.bar(
     df_comparativo_plot, x='Métrica', y='Número de Alunos', color='Tipo',
     barmode='group', title=f"Comparativo Detalhado para o {texto_anos}",
     labels={'Número de Alunos': 'Total de Alunos', 'Métrica': 'Categoria'},
-    text_auto=True, color_discrete_map={'Ingressantes':"#50C909", 'Concluintes':"#FF9B05"}
+    text_auto=True, color_discrete_map={'Ingressantes':"#179501", 'Concluintes':"#FFC105"}
 )
 st.plotly_chart(fig_comparativo, use_container_width=True)
 
