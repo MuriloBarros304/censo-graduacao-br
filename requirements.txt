@@ -73,3 +73,4 @@ urllib3==2.4.0
 watchdog==6.0.0
 wcwidth==0.2.13
 xlrd==2.0.2
+scikit-learn
