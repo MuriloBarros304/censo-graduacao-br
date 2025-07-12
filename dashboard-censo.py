@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from regression import prever_tendencias
 
 # --- Configuração da Página ---
 # A configuração da página deve ser o primeiro comando do Streamlit
@@ -53,8 +54,10 @@ def carregar_dados():
     
     except pd.errors.EmptyDataError:
         st.error("Erro ao carregar os dados. O arquivo está vazio ou não foi encontrado.")
+        return None, None
     except pd.errors.ParserError as e:
         st.error(f"Erro de análise ao carregar os dados. Verifique o formato do arquivo. Erro: {e}")
+        return None, None
     except Exception as e:
         st.error(f"Ocorreu um erro inesperado ao carregar os dados: {e}")
         return None, None
@@ -106,7 +109,8 @@ anos_selecionados = st.sidebar.slider(
     "Selecione o Período:",
     min_value=ano_min,
     max_value=ano_max,
-    value=(ano_min, ano_max) # Padrão: seleciona o intervalo completo
+    value=(ano_min, ano_max), # Padrão: seleciona o intervalo completo
+    key='anos_analise'
 )
 
 # Desempacota os anos selecionados
@@ -194,7 +198,7 @@ mapa_de_cores = {
     'Com Fins': "#FFAA00",
     'Sem Fins': "#FF6F00"
 }
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Distribuições Gerais", "Modalidades de Ensino", "Categorias Administrativas", "Pública", "Privada", "Dados Brutos"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Distribuições Gerais", "Modalidades de Ensino", "Categorias Administrativas", "Pública", "Privada", "Previsão de tendências", "Dados Brutos"])
 
 with tab1:
     st.markdown(f"#### Distribuição Geral de {tipo_analise} ({texto_anos})")
@@ -387,6 +391,44 @@ with tab5:
         st.plotly_chart(fig_remota_privada, use_container_width=True)
 
 with tab6:
+    st.markdown("#### Previsão de Tendências Futuras")
+    st.markdown(f"Analisando **{tipo_analise}** com base nos graus selecionados.")
+    
+    anos_para_prever = st.number_input(
+        "Selecione o número de anos para prever no futuro:",
+        min_value=1,
+        max_value=10, # Limite para não sobrecarregar
+        value=3, # Padrão: 3 anos
+        step=1,
+        key='anos_previsao_futura'
+    )
+    
+    df_para_previsao = df_filtrado.groupby('Ano', as_index=False).agg({'Total geral': 'sum'})
+
+    if len(df_filtrado) < 3: # Precisa de pelo menos 3 pontos para criar as features
+        st.warning("Selecione um período com pelo menos 3 anos de dados para gerar uma previsão.")
+    else:
+        df_resultado_previsao = prever_tendencias(df_para_previsao, anos_para_prever)
+        if not df_resultado_previsao.empty:
+            fig_previsao = px.line(
+                df_resultado_previsao, 
+                x='Ano', 
+                y='Total geral',
+                color='Tipo',
+                title=f"Previsão de {tipo_analise} para os Próximos {anos_para_prever} Anos",
+                markers=True,
+                color_discrete_map={
+                    'Histórico': "#00BFC9",
+                    'Previsão': "#E95500"
+                }
+            )
+            fig_previsao.update_xaxes(dtick=1)
+            st.plotly_chart(fig_previsao, use_container_width=True)
+            
+            with st.expander("Ver dados da previsão"):
+                st.dataframe(df_resultado_previsao)
+
+with tab7:
     st.markdown(f"#### Dados Filtrados ({tipo_analise} - {texto_anos})")
     st.dataframe(df_filtrado)
     @st.cache_data
@@ -459,7 +501,8 @@ anos_ingresso_selecionados = st.sidebar.slider(
     min_value=min(anos_disponiveis),
     max_value=max(anos_disponiveis) - 5, # Garante que há dados de conclusão
     value=(min(anos_disponiveis), max(anos_disponiveis) - 5), # Padrão: seleciona o intervalo completo menos 5 anos (defasagem padrão)
-    step=1
+    step=1,
+    key='anos_ingresso_selecionados'
 )
 
 # Input para a defasagem de anos
