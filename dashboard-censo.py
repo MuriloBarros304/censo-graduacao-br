@@ -392,45 +392,53 @@ with tab5:
 
 with tab6:
     st.markdown("#### Previsão de Tendências Futuras")
-    st.markdown(f"Analisando **{tipo_analise}** com base nos graus selecionados.")
-    st.markdown(f"Período selecionado: **{texto_anos}**")
+    st.markdown(f"Analisando **{tipo_analise}** para o **{texto_anos}**")
+    st.markdown("Grau(s) de graduação selecionado(s): " + ", ".join(grau_selecionado) if grau_selecionado else "Todos os Graus")
     st.markdown("Utilizando Regressão Polinomial para prever tendências futuras. Selecione o grau do polinômio e o número de anos para prever.")
     
-    anos_para_prever = st.number_input(
-        "Selecione o número de anos para prever no futuro:",
-        min_value=1,
-        max_value=10, # Limite para não sobrecarregar
-        value=3, # Padrão: 3 anos
-        step=1,
-        key='anos_previsao_futura'
-    )
-    grau_polinomio = st.number_input(
-        "Selecione o grau do polinômio para a previsão:",
-        min_value=1,
-        max_value=5, # Limite para evitar sobreajuste
-        value=2, # Padrão: grau 2
-        step=1,
-        key='grau_polinomio')
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        anos_para_prever = st.number_input(
+            "Anos para prever:", min_value=1, max_value=10, value=3, step=1, key='anos_previsao_futura'
+        )
+    with col2:
+        grau_polinomio = st.number_input(
+            "Grau do polinômio:", min_value=1, max_value=5, value=2, step=1, key='grau_polinomio'
+        )
+    with col3:
+         filtro_regressao = st.selectbox(
+            "Filtro para previsão:",
+            options=["Total geral", "Total geral publica", "Total geral privada", "Total presencial", "Total geral remota"],
+            index=0,
+            key='filtro_regressao'
+        )
     
     mostrar_ajuste = st.checkbox(
-        "Mostrar ajuste da curva polinomial nos dados históricos",
-        value=True, # Padrão: mostrar ajuste
-        key='mostrar_ajuste'
+        "Mostrar ajuste da curva polinomial nos dados históricos", value=True, key='mostrar_ajuste'
     )
-    
-    df_para_previsao = df_filtrado.groupby('Ano', as_index=False).agg({'Total geral': 'sum'})
+
+    df_para_previsao = df_filtrado.groupby('Ano', as_index=False).agg({
+        'Total geral': 'sum',
+        'Total geral publica': 'sum',
+        'Total geral privada': 'sum',
+        'Total presencial': 'sum',
+        'Total geral remota': 'sum'
+    })
+
+    df_regressao_input = df_para_previsao[['Ano', filtro_regressao]].copy()
+    df_regressao_input.rename(columns={filtro_regressao: 'Total geral'}, inplace=True)
 
     if len(df_filtrado) < 3: # Precisa de pelo menos 3 pontos para criar as features
         st.warning("Selecione um período com pelo menos 3 anos de dados para gerar uma previsão.")
     else:
-        df_resultado_previsao = regressao_polinomial(df_para_previsao, anos_para_prever, grau_polinomio, mostrar_ajuste)
+        df_resultado_previsao, betas = regressao_polinomial(df_regressao_input, anos_para_prever, grau_polinomio, mostrar_ajuste)
         if not df_resultado_previsao.empty:
             fig_previsao = px.line(
                 df_resultado_previsao, 
                 x='Ano', 
                 y='Total geral',
                 color='Tipo',
-                title=f"Previsão de {tipo_analise} para os Próximos {anos_para_prever} Anos",
+                title=f"Previsão de {tipo_analise} para os próximos {anos_para_prever} anos analisando {filtro_regressao.title()}",
                 markers=True,
                 color_discrete_map={
                     'Histórico': "#00BFC9",
@@ -440,7 +448,9 @@ with tab6:
             )
             fig_previsao.update_xaxes(dtick=1)
             st.plotly_chart(fig_previsao, use_container_width=True)
-            
+            st.markdown("###### Coeficientes do Polinômio Ajustado:")
+            for i, beta in enumerate(betas):
+                st.markdown(f"**β{i} (x^{i})**: {beta:.4f}")
             with st.expander("Ver dados da previsão"):
                 st.dataframe(df_resultado_previsao)
 

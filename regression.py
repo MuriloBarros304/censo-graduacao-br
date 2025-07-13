@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def regressao_polinomial(df_historico: pd.DataFrame, anos_para_prever: int, grau: int, mostrar_curva: bool) -> pd.DataFrame:
+def regressao_polinomial(df_historico: pd.DataFrame, anos_para_prever: int, grau: int, mostrar_curva: bool) -> tuple[pd.DataFrame, np.ndarray]:
     """
     Prevê tendências futuras com base em dados históricos usando regressão polinomial
     calculada manualmente através da Equação Normal.
@@ -13,7 +13,7 @@ def regressao_polinomial(df_historico: pd.DataFrame, anos_para_prever: int, grau
         mostrar_curva (bool): Se True, mostra a curva ajustada nos dados históricos.
 
     Returns:
-        pd.DataFrame: DataFrame com os dados históricos, a curva ajustada e as previsões.
+        tuple: Um DataFrame com os anos previstos e seus totais, e um array com os coeficientes do polinômio.
     """
     df_limpo = df_historico[['Ano', 'Total geral']].copy().sort_values(by='Ano').reset_index(drop=True)
 
@@ -40,9 +40,11 @@ def regressao_polinomial(df_historico: pd.DataFrame, anos_para_prever: int, grau
         xty = xt @ y_hist
         beta = xtx_inv @ xty
     except np.linalg.LinAlgError:
-        # Caso a matriz seja singular (não inversível), retorna um DF vazio
+        # Caso a matriz seja singular (não inversível), retorna um DataFrame vazio e um array vazio
+        # Isso pode acontecer se o grau do polinômio for muito alto ou se os dados forem insuficientes.
+        # O usuário deve ser avisado para tentar um grau menor ou verificar os dados.
         print("Erro: A matriz X.T * X é singular e não pode ser invertida. Tente um grau menor ou verifique os dados.")
-        return pd.DataFrame()
+        return pd.DataFrame(), np.array([])
 
     # Fazer previsões
     # Gerar os anos futuros
@@ -74,10 +76,5 @@ def regressao_polinomial(df_historico: pd.DataFrame, anos_para_prever: int, grau
     else:
         # Se não, concatena apenas os dados históricos e as previsões
         df_final = pd.concat([df_plot_hist, df_futuro]).reset_index(drop=True)
-    
-    # Imprimir os coeficientes encontrados para análise
-    print(f"Coeficientes do Polinômio (beta) de grau {grau}:")
-    for i, b in enumerate(beta):
-        print(f"β{i} (x^{i}): {b:.4f}")
 
-    return df_final
+    return df_final, beta
