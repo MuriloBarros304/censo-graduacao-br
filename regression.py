@@ -1,55 +1,74 @@
-from sklearn.linear_model import LinearRegression
 import pandas as pd
 import numpy as np
 
-def prever_tendencias(df_historico: pd.DataFrame, anos_para_prever: int) -> pd.DataFrame:
+def regressao_polinomial(df_historico: pd.DataFrame, anos_para_prever: int, grau: int, mostrar_curva: bool) -> pd.DataFrame:
     """
-    Prevê tendências futuras com base em dados históricos usando regressão linear.
+    Prevê tendências futuras com base em dados históricos usando regressão polinomial
+    calculada manualmente através da Equação Normal.
+
     Args:
-        df_historico (pd.DataFrame): DataFrame contendo os dados históricos com colunas 'Ano' e 'Total geral'.
+        df_historico (pd.DataFrame): DataFrame com colunas 'Ano' e 'Total geral'.
         anos_para_prever (int): Número de anos para prever no futuro.
+        grau (int): O grau do polinômio a ser ajustado (ex: 1 para linear, 2 para quadrática).
+        mostrar_curva (bool): Se True, mostra a curva ajustada nos dados históricos.
+
     Returns:
-        pd.DataFrame: DataFrame contendo as previsões futuras com colunas 'Ano', 'Total geral' e 'Tipo'.
+        pd.DataFrame: DataFrame com os dados históricos, a curva ajustada e as previsões.
     """
-    # Garante que estamos trabalhando com uma cópia e com os dados ordenados por ano
-    df_historico_limpo = df_historico[['Ano', 'Total geral']].copy().sort_values(by='Ano').reset_index(drop=True)
+    df_limpo = df_historico[['Ano', 'Total geral']].copy().sort_values(by='Ano').reset_index(drop=True)
+
+    x_hist = df_limpo['Ano'].values
+    y_hist = df_limpo['Total geral'].values
+
+    x_hist = np.array(x_hist, dtype=np.float64)
+    y_hist = np.array(y_hist, dtype=np.float64)
+
+    # Matriz de Design (X)
+    # Cada coluna é x elevado a uma potência, de 0 até o grau do polinômio.
+    X_hist_matrix = np.column_stack([x_hist**p for p in range(grau + 1)])
+
+    # Equação Normal para encontrar os coeficientes (beta)
+    # beta = inv(X.T * X) * X.T * y
+    try:
+        xt = X_hist_matrix.T
+        xtx = xt @ X_hist_matrix # Multiplicação de matrizes
+        xtx_inv = np.linalg.inv(xtx) # Inversa da matriz
+        xty = xt @ y_hist
+        beta = xtx_inv @ xty
+    except np.linalg.LinAlgError:
+        # Caso a matriz seja singular (não inversível), retorna um DF vazio
+        print("Erro: A matriz X.T * X é singular e não pode ser invertida. Tente um grau menor ou verifique os dados.")
+        return pd.DataFrame()
+
+    # Fazer previsões
+    # Gerar os anos futuros
+    ultimo_ano = x_hist[-1]
+    anos_futuros = np.array([ultimo_ano + i + 1 for i in range(anos_para_prever)])
+
+    # Construir a Matriz de Design para os anos futuros
+    X_futuro_matrix = np.column_stack([anos_futuros**p for p in range(grau + 1)])
+
+    # Prever os valores multiplicando a matriz futura pelos coeficientes
+    previsoes = X_futuro_matrix @ beta
+
+    # Montar o DataFrame final para visualização
+    # Curva ajustada sobre os dados históricos
+    y_ajustado = X_hist_matrix @ beta
+
+    df_plot_hist = pd.DataFrame({'Ano': x_hist, 'Total geral': y_hist, 'Tipo': 'Histórico'})
+    df_plot_ajuste = pd.DataFrame({'Ano': x_hist, 'Total geral': y_ajustado, 'Tipo': 'Ajuste Polinomial'})
+    df_futuro = pd.DataFrame({'Ano': anos_futuros, 'Total geral': previsoes, 'Tipo': 'Previsão Polinomial'})
+
+    if mostrar_curva: # Se o usuário quiser ver a curva ajustada
+        # Concatenar os dados históricos, a curva ajustada e as previsões
+        df_final = pd.concat([df_plot_hist, df_plot_ajuste, df_futuro]).reset_index(drop=True)
+    else:
+        # Se não, concatena apenas os dados históricos e as previsões
+        df_final = pd.concat([df_plot_hist, df_futuro]).reset_index(drop=True)
     
-    # 1. Engenharia de Features
-    df_eng = df_historico_limpo.copy()
-    df_eng['tendencia'] = range(len(df_eng))
-    df_eng['lag_1'] = df_eng['Total geral'].shift(1)
-    df_eng['media_movel_2a'] = df_eng['Total geral'].shift(1).rolling(window=2).mean()
-    df_eng = df_eng.dropna().reset_index(drop=True)
+    # Imprimir os coeficientes encontrados para análise
+    print(f"Coeficientes do Polinômio (beta) de grau {grau}:")
+    for i, b in enumerate(beta):
+        print(f"β{i} (x^{i}): {b:.4f}")
 
-    if len(df_eng) < 2:
-        return pd.DataFrame() # Retorna DF vazio se não houver dados suficientes
-
-    X_hist = df_eng[['tendencia', 'lag_1', 'media_movel_2a']]
-    y_hist = df_eng['Total geral']
-    
-    modelo = LinearRegression()
-    modelo.fit(X_hist, y_hist)
-
-    previsoes_futuras = []
-    ultimo_ano = df_eng['Ano'].iloc[-1]
-    ultima_tendencia = df_eng['tendencia'].iloc[-1]
-    ultimo_valor = y_hist.iloc[-1]
-    penultimo_valor = y_hist.iloc[-2]
-
-    for i in range(anos_para_prever):
-        tendencia_futura = ultima_tendencia + 1 + i
-        lag_1_futuro = ultimo_valor
-        media_movel_futura = (ultimo_valor + penultimo_valor) / 2.0
-        features_futuras = np.array([[tendencia_futura, lag_1_futuro, media_movel_futura]])
-        proximo_valor_previsto = modelo.predict(features_futuras)[0]
-        previsoes_futuras.append(proximo_valor_previsto)
-        penultimo_valor = ultimo_valor
-        ultimo_valor = proximo_valor_previsto
-
-    anos_futuros = [ultimo_ano + i + 1 for i in range(anos_para_prever)]
-    df_futuro = pd.DataFrame({'Ano': anos_futuros, 'Total geral': previsoes_futuras, 'Tipo': 'Previsão'})
-    
-    df_plot_hist = pd.DataFrame({'Ano': df_historico_limpo['Ano'], 'Total geral': df_historico_limpo['Total geral'], 'Tipo': 'Histórico'})
-
-    df_final = pd.concat([df_plot_hist, df_futuro]).reset_index(drop=True)
     return df_final

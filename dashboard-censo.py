@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from regression import prever_tendencias
+from regression import regressao_polinomial
 
 # --- Configuração da Página ---
 # A configuração da página deve ser o primeiro comando do Streamlit
@@ -393,6 +393,8 @@ with tab5:
 with tab6:
     st.markdown("#### Previsão de Tendências Futuras")
     st.markdown(f"Analisando **{tipo_analise}** com base nos graus selecionados.")
+    st.markdown(f"Período selecionado: **{texto_anos}**")
+    st.markdown("Utilizando Regressão Polinomial para prever tendências futuras. Selecione o grau do polinômio e o número de anos para prever.")
     
     anos_para_prever = st.number_input(
         "Selecione o número de anos para prever no futuro:",
@@ -402,13 +404,26 @@ with tab6:
         step=1,
         key='anos_previsao_futura'
     )
+    grau_polinomio = st.number_input(
+        "Selecione o grau do polinômio para a previsão:",
+        min_value=1,
+        max_value=5, # Limite para evitar sobreajuste
+        value=2, # Padrão: grau 2
+        step=1,
+        key='grau_polinomio')
+    
+    mostrar_ajuste = st.checkbox(
+        "Mostrar ajuste da curva polinomial nos dados históricos",
+        value=True, # Padrão: mostrar ajuste
+        key='mostrar_ajuste'
+    )
     
     df_para_previsao = df_filtrado.groupby('Ano', as_index=False).agg({'Total geral': 'sum'})
 
     if len(df_filtrado) < 3: # Precisa de pelo menos 3 pontos para criar as features
         st.warning("Selecione um período com pelo menos 3 anos de dados para gerar uma previsão.")
     else:
-        df_resultado_previsao = prever_tendencias(df_para_previsao, anos_para_prever)
+        df_resultado_previsao = regressao_polinomial(df_para_previsao, anos_para_prever, grau_polinomio, mostrar_ajuste)
         if not df_resultado_previsao.empty:
             fig_previsao = px.line(
                 df_resultado_previsao, 
@@ -419,7 +434,8 @@ with tab6:
                 markers=True,
                 color_discrete_map={
                     'Histórico': "#00BFC9",
-                    'Previsão': "#E95500"
+                    'Ajuste Polinomial': "#4EB504",
+                    'Previsão Polinomial': "#E95500"
                 }
             )
             fig_previsao.update_xaxes(dtick=1)
