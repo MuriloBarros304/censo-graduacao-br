@@ -24,8 +24,12 @@ def regressao_polinomial(df_historico: pd.DataFrame, anos_para_prever: int, grau
     y_hist = np.array(y_hist, dtype=np.float64)
 
     # Matriz de Design (X)
+    # Normalizar o ano para evitar problemas numéricos
+    ano_inicial = df_limpo['Ano'].min()
+    x_hist_normalizado = df_limpo['Ano'].values - ano_inicial 
+    y_hist = df_limpo['Total geral'].values
     # Cada coluna é x elevado a uma potência, de 0 até o grau do polinômio.
-    X_hist_matrix = np.column_stack([x_hist**p for p in range(grau + 1)])
+    X_hist_matrix = np.column_stack([x_hist_normalizado**p for p in range(grau + 1)])
 
     # Equação Normal para encontrar os coeficientes (beta)
     # beta = inv(X.T * X) * X.T * y
@@ -45,8 +49,13 @@ def regressao_polinomial(df_historico: pd.DataFrame, anos_para_prever: int, grau
     ultimo_ano = x_hist[-1]
     anos_futuros = np.array([ultimo_ano + i + 1 for i in range(anos_para_prever)])
 
+    # Normalizar os anos futuros da mesma forma
+    ultimo_ano_original = df_limpo['Ano'].values[-1]
+    anos_futuros_original = np.array([ultimo_ano_original + i + 1 for i in range(anos_para_prever)])
+    anos_futuros_normalizado = anos_futuros_original - ano_inicial
+
     # Construir a Matriz de Design para os anos futuros
-    X_futuro_matrix = np.column_stack([anos_futuros**p for p in range(grau + 1)])
+    X_futuro_matrix = np.column_stack([anos_futuros_normalizado**p for p in range(grau + 1)])
 
     # Prever os valores multiplicando a matriz futura pelos coeficientes
     previsoes = X_futuro_matrix @ beta
